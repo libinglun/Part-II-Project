@@ -3,8 +3,7 @@ import numpy as np
 
 
 class DirectAssignmentGibbs:
-    def __init__(self, iterations, model: HDPHMM, observations, ):
-        self.iterations = iterations
+    def __init__(self, model: HDPHMM, observations):
         self.model = model
 
         self.observations = observations
@@ -20,47 +19,78 @@ class DirectAssignmentGibbs:
         self.m_mat = None
         self.K = 1
 
-    def initialise_hidden_states(self):
-        pass
+    def sample_hidden_states_on_last_state(self, t):
+        # last time point
 
-    def sample_hidden_states(self):
-        for t in range(1, self.seq_length - 1):
-            # define last_state(j), next_state(l)
-            last_state = self.hidden_states[t - 1]
-            next_state = self.hidden_states[t + 1]
+        # j is the hidden state value, ranging from 0 to T - 1
+        last_state = self.hidden_states[t - 1]
 
-            # exclude the counts of the current state
-            self.transition_count[last_state, self.hidden_states[t]] -= 1
-            self.transition_count[self.hidden_states[t], next_state] -= 1
+        # derive the current hidden state posterior over K states
+        posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[t], self.transition_count, self.K, )
 
-            # derive the current hidden state posterior over K states
-            posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[t],
-                                                           self.transition_count, self.K, )
+        # update the current hidden state by multinomial
+        self.hidden_states[t] = np.where(np.multinomial(1, posterior))[0][0]
 
-            # update the current hidden state by multinomial
-            self.hidden_states[t] = np.where(np.multinomial(1, posterior))[0][0]
+        # update beta_vec, n_mat when having a new state
+        if self.hidden_states[t] == self.K:
+            # Add a new state
+            self.K += 1
 
-            if self.hidden_states[t] == self.K:
-                # Add a new state
-                self.K += 1
+            self.model.update_beta_with_new_state()
 
-                self.model.update_beta_with_new_state()
+            # Extend the transition matrix with the new state
+            # a new column of zero is being added to the right side of n_mat
+            self.transition_count = np.hstack((self.transition_count, np.zeros((self.K, 1))))
+            # a new row of zero is being added to the bottom of n_mat
+            self.transition_count = np.vstack((self.transition_count, np.zeros((1, self.K + 1))))
 
-                # Extend the transition matrix with the new state
-                # a new column of zero is being added to the right side of n_mat
-                self.transition_count = np.hstack((self.transition_count, np.zeros((self.K, 1))))
-                # a new row of zero is being added to the bottom of n_mat
-                self.transition_count = np.vstack((self.transition_count, np.zeros((1, self.K + 1))))
+            # both ysum and ycnt is a 1D array, just append 0 at the end of array
+            self.observed_data_each_state = np.hstack((self.observed_data_each_state, 0))
+            self.observed_count_each_state = np.hstack((self.observed_count_each_state, 0))
 
-                # both ysum and ycnt is a 1D array, just append 0 at the end of array
-                self.observed_data_each_state = np.hstack((self.observed_data_each_state, 0))
-                self.observed_count_each_state = np.hstack((self.observed_count_each_state, 0))
+        else:
+            self.transition_count[last_state, self.hidden_states[t]] += 1
+            self.observed_data_each_state[self.hidden_states[t]] += self.observations[t]
+            self.observed_count_each_state[self.hidden_states[t]] += 1
 
-            else:
-                self.transition_count[last_state, self.hidden_states[t]] += 1
-                self.transition_count[self.hidden_states[t], next_state] += 1
-                self.observed_data_each_state[self.hidden_states[t]] += self.observations[t]
-                self.observed_count_each_state[self.hidden_states[t]] += 1
+    def sample_hidden_states_on_last_next_state(self, t):
+
+        # define last_state(j), next_state(l)
+        last_state = self.hidden_states[t - 1]
+        next_state = self.hidden_states[t + 1]
+
+        # exclude the counts of the current state
+        self.transition_count[last_state, self.hidden_states[t]] -= 1
+        self.transition_count[self.hidden_states[t], next_state] -= 1
+
+        # derive the current hidden state posterior over K states
+        posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[t],
+                                                       self.transition_count, self.K, )
+
+        # update the current hidden state by multinomial
+        self.hidden_states[t] = np.where(np.multinomial(1, posterior))[0][0]
+
+        if self.hidden_states[t] == self.K:
+            # Add a new state
+            self.K += 1
+
+            self.model.update_beta_with_new_state()
+
+            # Extend the transition matrix with the new state
+            # a new column of zero is being added to the right side of n_mat
+            self.transition_count = np.hstack((self.transition_count, np.zeros((self.K, 1))))
+            # a new row of zero is being added to the bottom of n_mat
+            self.transition_count = np.vstack((self.transition_count, np.zeros((1, self.K + 1))))
+
+            # both ysum and ycnt is a 1D array, just append 0 at the end of array
+            self.observed_data_each_state = np.hstack((self.observed_data_each_state, 0))
+            self.observed_count_each_state = np.hstack((self.observed_count_each_state, 0))
+
+        else:
+            self.transition_count[last_state, self.hidden_states[t]] += 1
+            self.transition_count[self.hidden_states[t], next_state] += 1
+            self.observed_data_each_state[self.hidden_states[t]] += self.observations[t]
+            self.observed_count_each_state[self.hidden_states[t]] += 1
 
     def update_K(self):
         # rem_ind contains all the unique value of zt
@@ -113,3 +143,6 @@ class DirectAssignmentGibbs:
         # sum given all axis of m_mat
         total_sum = self.m_mat.sum()
         self.model.update_gamma(total_sum, self.K)
+
+    def sample_transition_distribution(self):
+        pass

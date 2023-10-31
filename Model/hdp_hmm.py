@@ -29,6 +29,31 @@ class HDPHMM:
         self.beta_new = tmp[-1]
         self.beta_vec = tmp[:-1]
 
+    def hidden_states_posterior_with_last_state(self, last_state: int, observation, transition_count: NDArray, K: int,
+                                                emission_pdf, emission_pdf_new):
+        tmp_vec = np.arange(K)
+        # p(z_t = k|params)
+        current_hidden_state_dist = (
+                (self.alpha * self.beta_vec + transition_count[last_state] + self.rho * (last_state == tmp_vec))
+                / (self.alpha + transition_count[last_state].sum() + self.rho))
+
+        new_hidden_state_dist = (self.alpha ** 2) * self.beta_new / (
+                    self.alpha + transition_count[last_state].sum() + self.rho)
+
+        # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are a single float
+        observation_dist = emission_pdf(observation)
+        # new hidden state (cluster) with new observation emission pdf
+        observation_dist_with_new = emission_pdf_new(observation)
+
+        # construct z's posterior over k
+        # add new column at the end of distribution array
+        hidden_states_posterior = np.hstack((current_hidden_state_dist * observation_dist,
+                                             new_hidden_state_dist * observation_dist_with_new))
+        # normalise the new distribution array
+        hidden_states_posterior = hidden_states_posterior / hidden_states_posterior.sum()
+
+        return hidden_states_posterior
+
     def hidden_states_posterior(self, last_state: int, next_state: int, observation, transition_count: NDArray, K: int,
                                 emission_pdf, emission_pdf_new):
         """
