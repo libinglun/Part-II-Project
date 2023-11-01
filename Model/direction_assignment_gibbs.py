@@ -17,6 +17,7 @@ class DirectAssignmentGibbs:
 
         self.transition_count = np.array([[0]])  # (n_mat)
         self.m_mat = None
+        self.pi_mat = None
         self.K = 1
 
     def sample_hidden_states_on_last_state(self, t):
@@ -145,4 +146,12 @@ class DirectAssignmentGibbs:
         self.model.update_gamma(total_sum, self.K)
 
     def sample_transition_distribution(self):
-        pass
+        self.pi_mat = np.zeros((self.K + 1, self.K + 1))
+        for j in range(self.K):
+            prob_vec = np.hstack((self.model.alpha * self.model.beta_vec + self.transition_count[j], self.model.alpha * self.model.beta_new))
+            prob_vec[j] += self.model.rho
+            prob_vec[prob_vec < 0.01] = 0.01  # clip step
+            self.pi_mat[j] = np.dirichlet(prob_vec, size=1)[0]
+        prob_vec = np.hstack((self.model.alpha * self.model.beta_vec, self.model.alpha * self.model.beta_new + self.model.rho))
+        prob_vec[prob_vec < 0.01] = 0.01  # clip step
+        self.pi_mat[-1] = np.dirichlet(prob_vec, size=1)[0]
