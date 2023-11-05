@@ -22,12 +22,11 @@ class DirectAssignmentGibbs:
         self.pi_mat = None
         self.K = 1
 
-    # def multinomial_emission_pdf(self):
-    #     yt_dist = (ssp.loggamma(dir0_sum + self.observed_data_each_state.sum(axis=1)) - ssp.loggamma(
-    #         dir0_sum + self.observed_data_each_state.sum(axis=1) + n_mul6ti)) + np.sum(ssp.loggamma(dir0 + yt[t] + ysum), axis=1) - np.sum(
-    #         ssp.loggamma(dir0 + ysum), axis=1)
-    #     yt_dist = np.real(yt_dist)
-    #     yt_dist = np.exp(yt_dist)
+    # def multinomial_emission_pdf(self, dir0_sum, dir0):
+    #     return lambda x: np.exp(np.real((special.loggamma(dir0_sum + self.observed_data_each_state.sum(axis=1)) - special.loggamma(
+    #         dir0_sum + self.observed_data_each_state.sum(axis=1) + sum(self.observations[0]))) + np.sum(special.loggamma(dir0 + x + self.observed_data_each_state), axis=1) - np.sum(
+    #         special.loggamma(dir0 + self.observed_data_each_state), axis=1))), lambda x: np.exp(np.real(special.loggamma(dir0_sum) - special.loggamma(dir0_sum + sum(self.observations[0])) + np.sum(
+    #         special.loggamma(dir0 + x)) - np.sum(special.loggamma(dir0))))
 
     def gaussian_emission_pdf(self, mu0, sigma0, sigma0_pri):
 
@@ -50,7 +49,7 @@ class DirectAssignmentGibbs:
                                                                        self.gaussian_emission_pdf)
 
         # update the current hidden state by multinomial
-        self.hidden_states[t] = np.where(np.multinomial(1, posterior))[0][0]
+        self.hidden_states[t] = np.where(np.random.multinomial(1, posterior))[0][0]
 
         # update beta_vec, n_mat when having a new state
         if self.hidden_states[t] == self.K:
@@ -89,7 +88,7 @@ class DirectAssignmentGibbs:
                                                        self.transition_count, self.K, self.gaussian_emission_pdf)
 
         # update the current hidden state by multinomial
-        self.hidden_states[t] = np.where(np.multinomial(1, posterior))[0][0]
+        self.hidden_states[t] = np.where(np.random.multinomial(1, posterior))[0][0]
 
         if self.hidden_states[t] == self.K:
             # Add a new state
@@ -139,8 +138,10 @@ class DirectAssignmentGibbs:
                     self.m_mat[j, k] = 0
                 else:
                     # move this to HDP_HMM, so that rho would be hidden from direct assignment sampler
-                    x_vec = np.binomial(1, (self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)) / (
-                            np.arange(self.transition_count[j, k]) + self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)))
+                    x_vec = np.random.binomial(1, (
+                            self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)) / (
+                                                       np.arange(self.transition_count[j, k]) + self.model.alpha *
+                                                       self.model.beta_vec[k] + self.model.rho * (j == k)))
                     x_vec = np.array(x_vec).reshape(-1)
                     self.m_mat[j, k] = sum(x_vec)
 
@@ -171,11 +172,11 @@ class DirectAssignmentGibbs:
                                   self.model.alpha * self.model.beta_new))
             prob_vec[j] += self.model.rho
             prob_vec[prob_vec < 0.01] = 0.01  # clip step
-            self.pi_mat[j] = np.dirichlet(prob_vec, size=1)[0]
+            self.pi_mat[j] = np.random.dirichlet(prob_vec, size=1)[0]
         prob_vec = np.hstack(
             (self.model.alpha * self.model.beta_vec, self.model.alpha * self.model.beta_new + self.model.rho))
         prob_vec[prob_vec < 0.01] = 0.01  # clip step
-        self.pi_mat[-1] = np.dirichlet(prob_vec, size=1)[0]
+        self.pi_mat[-1] = np.random.dirichlet(prob_vec, size=1)[0]
 
     def compute_log_marginal_likelihood(self, test_observations, start_point=-1):
         # if zt is -1, then yt is a brand-new sequence starting with state 0
@@ -186,11 +187,15 @@ class DirectAssignmentGibbs:
         if start_point != -1:
             a_mat[0, start_point] = 1  # np.log(ss.norm.pdf(yt[0],0,sigma0));
 
+        # TODO: abstract emission distribution params posterior
+        # TODO: compare and contrast with multinomial emission posterior
         # compute mu sigma posterior
         varn = 1 / (1 / (self.model.sigma_prior ** 2) + self.observed_count_each_state / (self.model.sigma ** 2))
-        mun = ((self.model.mu / (self.model.sigma_prior ** 2)) + (self.observed_data_each_state / (self.model.sigma ** 2))) * varn
+        mun = ((self.model.mu / (self.model.sigma_prior ** 2)) + (
+                self.observed_data_each_state / (self.model.sigma ** 2))) * varn
 
-        varn = np.hstack((np.sqrt((self.model.sigma ** 2) + varn), np.sqrt((self.model.sigma ** 2) + (self.model.sigma_prior ** 2))))
+        varn = np.hstack(
+            (np.sqrt((self.model.sigma ** 2) + varn), np.sqrt((self.model.sigma ** 2) + (self.model.sigma_prior ** 2))))
         mun = np.hstack((mun, self.model.mu))
 
         for t in range(length):
@@ -199,7 +204,8 @@ class DirectAssignmentGibbs:
                 a_mat[t + 1, j] = stats.norm.pdf(test_observations[t], mun[j], varn[j])
             else:
                 for j in range(self.K + 1):
-                    a_mat[t + 1, j] = sum(a_mat[t, :] * self.pi_mat[:, j]) * stats.norm.pdf(test_observations[t], mun[j], varn[j])
+                    a_mat[t + 1, j] = sum(a_mat[t, :] * self.pi_mat[:, j]) * stats.norm.pdf(test_observations[t],
+                                                                                            mun[j], varn[j])
             c_vec[t] = sum(a_mat[t + 1, :])
             a_mat[t + 1, :] /= c_vec[t]
 

@@ -15,12 +15,12 @@ class HDPHMM:
 
         self.alpha_a_prior = alpha_a_prior
         self.alpha_b_prior = alpha_b_prior
-        # the reciprocal might be due to parameter specification -- need to double check
-        self.alpha = np.gamma(alpha_a_prior, 1 / alpha_b_prior)
+        # the reciprocal might be due to parameter specification -- need to double-check
+        self.alpha = np.random.gamma(alpha_a_prior, 1 / alpha_b_prior)
 
         self.gamma_a_prior = gamma_a_prior
         self.gamma_b_prior = gamma_b_prior
-        self.gamma = np.gamma(gamma_a_prior, 1 / gamma_b_prior)
+        self.gamma = np.random.gamma(gamma_a_prior, 1 / gamma_b_prior)
 
         # the kappa parameter in direct assignment sampler
         self.rho = rho0
