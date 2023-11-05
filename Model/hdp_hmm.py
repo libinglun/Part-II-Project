@@ -29,8 +29,13 @@ class HDPHMM:
         self.beta_new = tmp[-1]
         self.beta_vec = tmp[:-1]
 
+        # guassian params
+        self.mu = 0
+        self.sigma = 0
+        self.sigma_prior = 0
+
     def hidden_states_posterior_with_last_state(self, last_state: int, observation, transition_count: NDArray, K: int,
-                                                emission_pdf, emission_pdf_new):
+                                                emission_func):
         tmp_vec = np.arange(K)
         # p(z_t = k|params)
         current_hidden_state_dist = (
@@ -38,9 +43,10 @@ class HDPHMM:
                 / (self.alpha + transition_count[last_state].sum() + self.rho))
 
         new_hidden_state_dist = (self.alpha ** 2) * self.beta_new / (
-                    self.alpha + transition_count[last_state].sum() + self.rho)
+                self.alpha + transition_count[last_state].sum() + self.rho)
 
-        # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are a single float
+        emission_pdf, emission_pdf_new = emission_func(self.mu, self.sigma, self.sigma_prior)
+        # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are arrays with length K
         observation_dist = emission_pdf(observation)
         # new hidden state (cluster) with new observation emission pdf
         observation_dist_with_new = emission_pdf_new(observation)
@@ -55,7 +61,7 @@ class HDPHMM:
         return hidden_states_posterior
 
     def hidden_states_posterior(self, last_state: int, next_state: int, observation, transition_count: NDArray, K: int,
-                                emission_pdf, emission_pdf_new):
+                                emission_func):
         """
         :param transition_count:transition_counts[i][j] number of transitions from state i to state j
         :param next_state: l
@@ -80,6 +86,7 @@ class HDPHMM:
                          last_state == next_state) * (last_state == tmp_vec))
                 / (self.alpha + transition_count.sum(axis=1) + self.rho + (last_state == tmp_vec)))
 
+        emission_pdf, emission_pdf_new = emission_func(self.mu, self.sigma, self.sigma_prior)
         # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are a single float
         observation_dist = emission_pdf(observation)
         # new hidden state (cluster) with new observation emission pdf
@@ -141,7 +148,7 @@ class HDPHMM:
         else:
             self.gamma = np.gamma(self.gamma_a_prior + K - 1, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
 
-        # alternative solution (still difference from Zhou's implementation)
+        # alternative solution (still different from Zhou's implementation)
         # pi_m = (self.gamma_a_prior + K - 1) / (m_total_sum * (self.gamma_b_prior - np.log(eta + CONST_EPS)))
         # self.gamma = pi_m * np.gamma(self.gamma_a_prior + K, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS))) + \
         #              (1 - pi_m) * np.gamma(self.gamma_a_prior + K - 1, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))

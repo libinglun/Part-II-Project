@@ -1,5 +1,7 @@
 from hdp_hmm import HDPHMM
 import numpy as np
+import scipy.stats as stats
+from scipy import special as special
 
 
 class DirectAssignmentGibbs:
@@ -20,6 +22,22 @@ class DirectAssignmentGibbs:
         self.pi_mat = None
         self.K = 1
 
+    # def multinomial_emission_pdf(self):
+    #     yt_dist = (ssp.loggamma(dir0_sum + self.observed_data_each_state.sum(axis=1)) - ssp.loggamma(
+    #         dir0_sum + self.observed_data_each_state.sum(axis=1) + n_mul6ti)) + np.sum(ssp.loggamma(dir0 + yt[t] + ysum), axis=1) - np.sum(
+    #         ssp.loggamma(dir0 + ysum), axis=1)
+    #     yt_dist = np.real(yt_dist)
+    #     yt_dist = np.exp(yt_dist)
+
+    def gaussian_emission_pdf(self, mu0, sigma0, sigma0_pri):
+
+        # compute y marginal likelihood
+        varn = 1 / (1 / (sigma0_pri ** 2) + self.observed_count_each_state / (sigma0 ** 2))
+        mun = ((mu0 / (sigma0_pri ** 2)) + (self.observed_data_each_state / (sigma0 ** 2))) * varn
+
+        return (lambda x: stats.norm.pdf(x, mun, np.sqrt((sigma0 ** 2) + varn)),
+                lambda x: stats.norm.pdf(x, mu0, np.sqrt((sigma0 ** 2) + (sigma0_pri ** 2))))
+
     def sample_hidden_states_on_last_state(self, t):
         # last time point
 
@@ -27,7 +45,9 @@ class DirectAssignmentGibbs:
         last_state = self.hidden_states[t - 1]
 
         # derive the current hidden state posterior over K states
-        posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[t], self.transition_count, self.K, )
+        posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[t],
+                                                                       self.transition_count, self.K,
+                                                                       self.gaussian_emission_pdf)
 
         # update the current hidden state by multinomial
         self.hidden_states[t] = np.where(np.multinomial(1, posterior))[0][0]
@@ -66,7 +86,7 @@ class DirectAssignmentGibbs:
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[t],
-                                                       self.transition_count, self.K, )
+                                                       self.transition_count, self.K, self.gaussian_emission_pdf)
 
         # update the current hidden state by multinomial
         self.hidden_states[t] = np.where(np.multinomial(1, posterior))[0][0]
@@ -120,8 +140,7 @@ class DirectAssignmentGibbs:
                 else:
                     # move this to HDP_HMM, so that rho would be hidden from direct assignment sampler
                     x_vec = np.binomial(1, (self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)) / (
-                            np.arange(self.transition_count[j, k]) + self.model.alpha * self.model.beta_vec[
-                        k] + self.model.rho * (j == k)))
+                            np.arange(self.transition_count[j, k]) + self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)))
                     x_vec = np.array(x_vec).reshape(-1)
                     self.m_mat[j, k] = sum(x_vec)
 
@@ -148,10 +167,41 @@ class DirectAssignmentGibbs:
     def sample_transition_distribution(self):
         self.pi_mat = np.zeros((self.K + 1, self.K + 1))
         for j in range(self.K):
-            prob_vec = np.hstack((self.model.alpha * self.model.beta_vec + self.transition_count[j], self.model.alpha * self.model.beta_new))
+            prob_vec = np.hstack((self.model.alpha * self.model.beta_vec + self.transition_count[j],
+                                  self.model.alpha * self.model.beta_new))
             prob_vec[j] += self.model.rho
             prob_vec[prob_vec < 0.01] = 0.01  # clip step
             self.pi_mat[j] = np.dirichlet(prob_vec, size=1)[0]
-        prob_vec = np.hstack((self.model.alpha * self.model.beta_vec, self.model.alpha * self.model.beta_new + self.model.rho))
+        prob_vec = np.hstack(
+            (self.model.alpha * self.model.beta_vec, self.model.alpha * self.model.beta_new + self.model.rho))
         prob_vec[prob_vec < 0.01] = 0.01  # clip step
         self.pi_mat[-1] = np.dirichlet(prob_vec, size=1)[0]
+
+    def compute_log_marginal_likelihood(self, test_observations, start_point=-1):
+        # if zt is -1, then yt is a brand-new sequence starting with state 0
+        # if zt is not -1, then it's the state of time point before the first time point of yt
+        length = len(test_observations)
+        a_mat = np.zeros((length + 1, self.K + 1))
+        c_vec = np.zeros(length)
+        if start_point != -1:
+            a_mat[0, start_point] = 1  # np.log(ss.norm.pdf(yt[0],0,sigma0));
+
+        # compute mu sigma posterior
+        varn = 1 / (1 / (self.model.sigma_prior ** 2) + self.observed_count_each_state / (self.model.sigma ** 2))
+        mun = ((self.model.mu / (self.model.sigma_prior ** 2)) + (self.observed_data_each_state / (self.model.sigma ** 2))) * varn
+
+        varn = np.hstack((np.sqrt((self.model.sigma ** 2) + varn), np.sqrt((self.model.sigma ** 2) + (self.model.sigma_prior ** 2))))
+        mun = np.hstack((mun, self.model.mu))
+
+        for t in range(length):
+            if t == 0 and start_point == -1:
+                j = 0
+                a_mat[t + 1, j] = stats.norm.pdf(test_observations[t], mun[j], varn[j])
+            else:
+                for j in range(self.K + 1):
+                    a_mat[t + 1, j] = sum(a_mat[t, :] * self.pi_mat[:, j]) * stats.norm.pdf(test_observations[t], mun[j], varn[j])
+            c_vec[t] = sum(a_mat[t + 1, :])
+            a_mat[t + 1, :] /= c_vec[t]
+
+        log_marginal_lik = sum(np.log(c_vec))
+        return a_mat, log_marginal_lik
