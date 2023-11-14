@@ -22,20 +22,29 @@ class DirectAssignmentGibbs:
         self.pi_mat = None
         self.K = 1
 
-    # def multinomial_emission_pdf(self, dir0_sum, dir0):
-    #     return lambda x: np.exp(np.real((special.loggamma(dir0_sum + self.observed_data_each_state.sum(axis=1)) - special.loggamma(
-    #         dir0_sum + self.observed_data_each_state.sum(axis=1) + sum(self.observations[0]))) + np.sum(special.loggamma(dir0 + x + self.observed_data_each_state), axis=1) - np.sum(
-    #         special.loggamma(dir0 + self.observed_data_each_state), axis=1))), lambda x: np.exp(np.real(special.loggamma(dir0_sum) - special.loggamma(dir0_sum + sum(self.observations[0])) + np.sum(
-    #         special.loggamma(dir0 + x)) - np.sum(special.loggamma(dir0))))
+        # Gaussian params
+        self.mu0 = np.mean(self.observations)
+        self.sigma0_prior = np.std(self.observations)
 
-    def gaussian_emission_pdf(self, mu0, sigma0, sigma0_pri):
+        # Multinomial params
+
+    def multinomial_emission_pdf(self, dir0_sum, dir0):
+        return lambda x: np.exp(
+            np.real((special.loggamma(dir0_sum + self.observed_data_each_state.sum(axis=1)) - special.loggamma(
+                dir0_sum + self.observed_data_each_state.sum(axis=1) + sum(self.observations[0]))) + np.sum(
+                special.loggamma(dir0 + x + self.observed_data_each_state), axis=1) - np.sum(
+                special.loggamma(dir0 + self.observed_data_each_state), axis=1))), lambda x: np.exp(
+            np.real(special.loggamma(dir0_sum) - special.loggamma(dir0_sum + sum(self.observations[0])) + np.sum(
+                special.loggamma(dir0 + x)) - np.sum(special.loggamma(dir0))))
+
+    def gaussian_emission_pdf(self, sigma0=0.5):
 
         # compute y marginal likelihood
-        varn = 1 / (1 / (sigma0_pri ** 2) + self.observed_count_each_state / (sigma0 ** 2))
-        mun = ((mu0 / (sigma0_pri ** 2)) + (self.observed_data_each_state / (sigma0 ** 2))) * varn
+        varn = 1 / (1 / (self.sigma0_prior ** 2) + self.observed_count_each_state / (sigma0 ** 2))
+        mun = ((self.mu0 / (self.sigma0_prior ** 2)) + (self.observed_data_each_state / (sigma0 ** 2))) * varn
 
         return (lambda x: stats.norm.pdf(x, mun, np.sqrt((sigma0 ** 2) + varn)),
-                lambda x: stats.norm.pdf(x, mu0, np.sqrt((sigma0 ** 2) + (sigma0_pri ** 2))))
+                lambda x: stats.norm.pdf(x, self.mu0, np.sqrt((sigma0 ** 2) + (self.sigma0_prior ** 2))))
 
     def sample_hidden_states_on_last_state(self, t):
         # last time point

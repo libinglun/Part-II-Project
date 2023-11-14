@@ -1,7 +1,23 @@
 import numpy as np
-
+import sys
 from hdp_hmm import HDPHMM
 from direction_assignment_gibbs import DirectAssignmentGibbs
+
+
+seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
+
+seed = int((int(sys.argv[1]) - 1) % 10)  # random seed
+np.random.seed(seed_vec[seed])  # fix randomness
+
+file_name = "fix_8states_multinomial_same_trans_diff_stick"
+
+train_data = np.load('../data/' + file_name + '.npz')
+test_data = np.load('../data/test_' + file_name + '.npz')
+
+real_hidden_states = train_data['zt']
+real_observations = train_data['yt']
+
+test_observations = test_data['yt']
 
 loglik_test_sample = []
 hidden_states_sample = []
@@ -9,10 +25,9 @@ hyperparams_sample = []
 
 if __name__ == "__main__":
     iterations = 100
-    model = HDPHMM(0, 0, 0, 0)
-    observations = []
-    test_observations = []
-    sampler = DirectAssignmentGibbs(model, observations)
+    model = HDPHMM()
+
+    sampler = DirectAssignmentGibbs(model, real_observations)
 
     # the hidden states are empty initially. Fill in hidden states for the first iteration only based on last state j
     for t in range(1, sampler.seq_length):

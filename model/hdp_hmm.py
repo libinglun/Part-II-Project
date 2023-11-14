@@ -11,7 +11,7 @@ class HDPHMM:
     but require complex argument passing from training to sampler and then to the model. Also, did not find a good way for the hierarchy.
     """
 
-    def __init__(self, alpha_a_prior, alpha_b_prior, gamma_a_prior, gamma_b_prior, rho0=0):
+    def __init__(self, alpha_a_prior=1, alpha_b_prior=0.01, gamma_a_prior=2, gamma_b_prior=1, rho0=0):
 
         self.alpha_a_prior = alpha_a_prior
         self.alpha_b_prior = alpha_b_prior
@@ -29,11 +29,6 @@ class HDPHMM:
         self.beta_new = tmp[-1]
         self.beta_vec = tmp[:-1]
 
-        # guassian params
-        self.mu = 0
-        self.sigma = 0
-        self.sigma_prior = 0
-
     def hidden_states_posterior_with_last_state(self, last_state: int, observation, transition_count: NDArray, K: int,
                                                 emission_func):
         tmp_vec = np.arange(K)
@@ -45,7 +40,7 @@ class HDPHMM:
         new_hidden_state_dist = (self.alpha ** 2) * self.beta_new / (
                 self.alpha + transition_count[last_state].sum() + self.rho)
 
-        emission_pdf, emission_pdf_new = emission_func(self.mu, self.sigma, self.sigma_prior)
+        emission_pdf, emission_pdf_new = emission_func()
         # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are arrays with length K
         observation_dist = emission_pdf(observation)
         # new hidden state (cluster) with new observation emission pdf
@@ -68,9 +63,7 @@ class HDPHMM:
         :param last_state: j
         :param observation: current observation at step t (t is the index of direct assignment sampler)
         :param K: Current number of states in-use
-        :param emission_pdf: the PARTIAL function of the pdf of emission distribution (e.g. norm.pdf), other params are
-        specified be the caller.
-        :param emission_pdf_new:
+        :param emission_func: the PARTIAL function of the pdf of emission distribution (e.g. norm.pdf), other params are specified be the caller.
         :return:
         """
 
@@ -86,7 +79,7 @@ class HDPHMM:
                          last_state == next_state) * (last_state == tmp_vec))
                 / (self.alpha + transition_count.sum(axis=1) + self.rho + (last_state == tmp_vec)))
 
-        emission_pdf, emission_pdf_new = emission_func(self.mu, self.sigma, self.sigma_prior)
+        emission_pdf, emission_pdf_new = emission_func()
         # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are a single float
         observation_dist = emission_pdf(observation)
         # new hidden state (cluster) with new observation emission pdf
