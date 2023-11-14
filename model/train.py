@@ -1,15 +1,18 @@
 import numpy as np
+import tqdm
 import sys
 from hdp_hmm import HDPHMM
 from direction_assignment_gibbs import DirectAssignmentGibbs
+from utils import compute_cost
 
 
 seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
 
-seed = int((int(sys.argv[1]) - 1) % 10)  # random seed
+seed = 0  # random seed
 np.random.seed(seed_vec[seed])  # fix randomness
 
-file_name = "fix_8states_multinomial_same_trans_diff_stick"
+emission_model = 'gaussian'
+file_name = "fix_8states_" + emission_model + "_same_trans_diff_stick"
 
 train_data = np.load('../data/' + file_name + '.npz')
 test_data = np.load('../data/test_' + file_name + '.npz')
@@ -33,7 +36,7 @@ if __name__ == "__main__":
     for t in range(1, sampler.seq_length):
         sampler.sample_hidden_states_on_last_state(t)
 
-    for iteration in range(iterations):
+    for iteration in tqdm.tqdm(range(iterations), desc="training sampler:"):
         for t in range(1, sampler.seq_length - 1):
             sampler.sample_hidden_states_on_last_next_state(t)
         sampler.sample_hidden_states_on_last_state(sampler.seq_length - 1)
@@ -47,10 +50,29 @@ if __name__ == "__main__":
         if iteration % 10 == 0:
             sampler.sample_transition_distribution()
             # calculate the log likelihood of test observation sequence based on the new sampled transition distribution and result of direct assignment sampling (every 10 iters)
-            _, loglik = sampler.compute_log_marginal_likelihood(test_observations)
+            _, loglik = sampler.compute_log_marginal_likelihood_guassian(test_observations)
             # output a matrix a_mat, a_mat[i, j] represents the probability of state j at time stamp i
             loglik_test_sample.append(loglik)
 
             # save the result of sampled hidden states and hyperparameter (every 10 iters)
             hidden_states_sample.append(sampler.hidden_states.copy())
             hyperparams_sample.append(np.array([sampler.model.alpha, sampler.model.gamma]))
+
+
+mismatch_vec = []
+zt_sample_permute = []
+K_real = len(np.unique(real_hidden_states))
+for ii in range(len(hidden_states_sample)):
+    cost, indexes = compute_cost(hidden_states_sample[ii], real_hidden_states)
+    dic = dict((v, k) for k, v in indexes)
+    tmp = np.array([dic[hidden_states_sample[ii][t]] for t in range(len(hidden_states_sample[0]))])
+
+    zt_sample_permute.append(tmp.copy())
+    mismatch_vec.append(np.sum(tmp != real_hidden_states))
+
+print(mismatch_vec, loglik_test_sample)
+
+# save results
+# seed = int((int(sys.argv[1])-1)%10);
+# np.savez(rlt_path + file_name + '_full_bayesian_rlt_' + str(seed) + '.npz', zt=hidden_states_sample, hyper=hyperparams_sample,
+#          hamming=mismatch_vec, zt_permute=zt_sample_permute, loglik=loglik_test_sample)

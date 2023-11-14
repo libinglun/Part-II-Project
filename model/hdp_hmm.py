@@ -25,7 +25,7 @@ class HDPHMM:
         # the kappa parameter in direct assignment sampler
         self.rho = rho0
 
-        tmp = np.dirichlet(np.array([1, self.gamma]), size=1)[0]
+        tmp = np.random.dirichlet(np.array([1, self.gamma]), size=1)[0]
         self.beta_new = tmp[-1]
         self.beta_vec = tmp[:-1]
 
@@ -100,12 +100,12 @@ class HDPHMM:
         return hidden_states_posterior
 
     def update_beta_with_new_state(self):
-        b = np.beta(1, self.gamma, size=1)
+        b = np.random.beta(1, self.gamma, size=1)
         self.beta_vec = np.hstack((self.beta_vec, b * self.beta_new))
         self.beta_new *= (1 - b)
 
     def update_beta_with_new_params(self, param_vec):
-        self.beta_vec = np.dirichlet(np.hstack((param_vec, self.gamma)), size=1)[0]
+        self.beta_vec = np.random.dirichlet(np.hstack((param_vec, self.gamma)), size=1)[0]
         self.beta_new = self.beta_vec[-1]
         self.beta_vec = self.beta_vec[:-1]
 
@@ -115,14 +115,14 @@ class HDPHMM:
         r_vec = []
         for val in transition_row_sum:
             if val > 0:
-                r_vec.append(np.beta(concentration + 1, val))
+                r_vec.append(np.random.beta(concentration + 1, val))
         r_vec = np.array(r_vec)
 
-        s_vec = np.binomial(1, transition_row_sum / (transition_row_sum + concentration))
+        s_vec = np.random.binomial(1, transition_row_sum / (transition_row_sum + concentration))
 
         # minus 1 here is to offset the additional one added on m_mat[0, 0] ?
         # I added "- self.rho" to be consistent with Berkley's notes, but this is inconsistent with original codes.
-        self.alpha = np.gamma(self.alpha_a_prior + m_total_sum - 1 - sum(s_vec),
+        self.alpha = np.random.gamma(self.alpha_a_prior + m_total_sum - 1 - sum(s_vec),
                               1 / (self.alpha_b_prior - sum(np.log(r_vec + CONST_EPS)))) - self.rho
 
     def update_gamma(self, m_total_sum, K):
@@ -132,14 +132,14 @@ class HDPHMM:
         :param K:
         :return:
         """
-        eta = np.beta(self.gamma + 1, m_total_sum)
+        eta = np.random.beta(self.gamma + 1, m_total_sum)
 
-        indicator = np.binomial(1, m_total_sum / m_total_sum + self.gamma)
+        indicator = np.random.binomial(1, m_total_sum / (m_total_sum + self.gamma))
 
         if indicator:
-            self.gamma = np.gamma(self.gamma_a_prior + K, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
+            self.gamma = np.random.gamma(self.gamma_a_prior + K, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
         else:
-            self.gamma = np.gamma(self.gamma_a_prior + K - 1, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
+            self.gamma = np.random.gamma(self.gamma_a_prior + K - 1, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
 
         # alternative solution (still different from Zhou's implementation)
         # pi_m = (self.gamma_a_prior + K - 1) / (m_total_sum * (self.gamma_b_prior - np.log(eta + CONST_EPS)))

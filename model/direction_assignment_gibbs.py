@@ -24,7 +24,8 @@ class DirectAssignmentGibbs:
 
         # Gaussian params
         self.mu0 = np.mean(self.observations)
-        self.sigma0_prior = np.std(self.observations)
+        self.sigma_prior = np.std(self.observations) # sigma0_pr
+        self.sigma0 = 0.5
 
         # Multinomial params
 
@@ -37,14 +38,14 @@ class DirectAssignmentGibbs:
             np.real(special.loggamma(dir0_sum) - special.loggamma(dir0_sum + sum(self.observations[0])) + np.sum(
                 special.loggamma(dir0 + x)) - np.sum(special.loggamma(dir0))))
 
-    def gaussian_emission_pdf(self, sigma0=0.5):
+    def gaussian_emission_pdf(self):
 
         # compute y marginal likelihood
-        varn = 1 / (1 / (self.sigma0_prior ** 2) + self.observed_count_each_state / (sigma0 ** 2))
-        mun = ((self.mu0 / (self.sigma0_prior ** 2)) + (self.observed_data_each_state / (sigma0 ** 2))) * varn
+        varn = 1 / (1 / (self.sigma_prior ** 2) + self.observed_count_each_state / (self.sigma0 ** 2))
+        mun = ((self.mu0 / (self.sigma_prior ** 2)) + (self.observed_data_each_state / (self.sigma0 ** 2))) * varn
 
-        return (lambda x: stats.norm.pdf(x, mun, np.sqrt((sigma0 ** 2) + varn)),
-                lambda x: stats.norm.pdf(x, self.mu0, np.sqrt((sigma0 ** 2) + (self.sigma0_prior ** 2))))
+        return (lambda x: stats.norm.pdf(x, mun, np.sqrt((self.sigma0 ** 2) + varn)),
+                lambda x: stats.norm.pdf(x, self.mu0, np.sqrt((self.sigma0 ** 2) + (self.sigma_prior ** 2))))
 
     def sample_hidden_states_on_last_state(self, t):
         # last time point
@@ -62,8 +63,6 @@ class DirectAssignmentGibbs:
 
         # update beta_vec, n_mat when having a new state
         if self.hidden_states[t] == self.K:
-            # Add a new state
-            self.K += 1
 
             self.model.update_beta_with_new_state()
 
@@ -77,10 +76,12 @@ class DirectAssignmentGibbs:
             self.observed_data_each_state = np.hstack((self.observed_data_each_state, 0))
             self.observed_count_each_state = np.hstack((self.observed_count_each_state, 0))
 
-        else:
-            self.transition_count[last_state, self.hidden_states[t]] += 1
-            self.observed_data_each_state[self.hidden_states[t]] += self.observations[t]
-            self.observed_count_each_state[self.hidden_states[t]] += 1
+            # Add a new state
+            self.K += 1
+
+        self.transition_count[last_state, self.hidden_states[t]] += 1
+        self.observed_data_each_state[self.hidden_states[t]] += self.observations[t]
+        self.observed_count_each_state[self.hidden_states[t]] += 1
 
     def sample_hidden_states_on_last_next_state(self, t):
 
@@ -100,8 +101,6 @@ class DirectAssignmentGibbs:
         self.hidden_states[t] = np.where(np.random.multinomial(1, posterior))[0][0]
 
         if self.hidden_states[t] == self.K:
-            # Add a new state
-            self.K += 1
 
             self.model.update_beta_with_new_state()
 
@@ -115,11 +114,13 @@ class DirectAssignmentGibbs:
             self.observed_data_each_state = np.hstack((self.observed_data_each_state, 0))
             self.observed_count_each_state = np.hstack((self.observed_count_each_state, 0))
 
-        else:
-            self.transition_count[last_state, self.hidden_states[t]] += 1
-            self.transition_count[self.hidden_states[t], next_state] += 1
-            self.observed_data_each_state[self.hidden_states[t]] += self.observations[t]
-            self.observed_count_each_state[self.hidden_states[t]] += 1
+            # Add a new state
+            self.K += 1
+
+        self.transition_count[last_state, self.hidden_states[t]] += 1
+        self.transition_count[self.hidden_states[t], next_state] += 1
+        self.observed_data_each_state[self.hidden_states[t]] += self.observations[t]
+        self.observed_count_each_state[self.hidden_states[t]] += 1
 
     def update_K(self):
         # rem_ind contains all the unique value of zt
@@ -134,7 +135,7 @@ class DirectAssignmentGibbs:
         self.transition_count = self.transition_count[remain_index][:, remain_index]
         self.observed_data_each_state = self.observed_data_each_state[remain_index]
         self.observed_count_each_state = self.observed_count_each_state[remain_index]
-        self.model.beta_vec = self.model.beta_new[remain_index]
+        self.model.beta_vec = self.model.beta_vec[remain_index]
 
         # update the new state space
         self.K = len(remain_index)
@@ -187,7 +188,7 @@ class DirectAssignmentGibbs:
         prob_vec[prob_vec < 0.01] = 0.01  # clip step
         self.pi_mat[-1] = np.random.dirichlet(prob_vec, size=1)[0]
 
-    def compute_log_marginal_likelihood(self, test_observations, start_point=-1):
+    def compute_log_marginal_likelihood_guassian(self, test_observations, start_point=-1):
         # if zt is -1, then yt is a brand-new sequence starting with state 0
         # if zt is not -1, then it's the state of time point before the first time point of yt
         length = len(test_observations)
@@ -199,13 +200,12 @@ class DirectAssignmentGibbs:
         # TODO: abstract emission distribution params posterior
         # TODO: compare and contrast with multinomial emission posterior
         # compute mu sigma posterior
-        varn = 1 / (1 / (self.model.sigma_prior ** 2) + self.observed_count_each_state / (self.model.sigma ** 2))
-        mun = ((self.model.mu / (self.model.sigma_prior ** 2)) + (
-                self.observed_data_each_state / (self.model.sigma ** 2))) * varn
+        varn = 1 / (1 / (self.sigma_prior ** 2) + self.observed_count_each_state / (self.sigma0 ** 2))
+        mun = ((self.mu0 / (self.sigma_prior ** 2)) + (self.observed_data_each_state / (self.sigma0 ** 2))) * varn
 
         varn = np.hstack(
-            (np.sqrt((self.model.sigma ** 2) + varn), np.sqrt((self.model.sigma ** 2) + (self.model.sigma_prior ** 2))))
-        mun = np.hstack((mun, self.model.mu))
+            (np.sqrt((self.sigma0 ** 2) + varn), np.sqrt((self.sigma0 ** 2) + (self.sigma_prior ** 2))))
+        mun = np.hstack((mun, self.mu0))
 
         for t in range(length):
             if t == 0 and start_point == -1:

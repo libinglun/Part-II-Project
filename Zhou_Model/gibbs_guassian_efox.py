@@ -1,4 +1,5 @@
 ## This file is the code for direct-assignment sampler with with 1d Gaussian observation with unknown mean and known var for S-HDP-HMM and HDP-HMM
+import sys
 
 import numpy as np
 from numpy.random import choice, normal, dirichlet, beta, gamma, multinomial, exponential, binomial, uniform
@@ -189,6 +190,7 @@ def sample_zw(zt, yt, n_mat, ysum, ycnt, beta_vec, beta_new, alpha0, gamma0, sig
         zt_dist = (alpha0 * beta_vec + n_mat[j] + rho0 * (j == tmp_vec)) / (alpha0 + n_mat[j].sum() + rho0)
         ztplus1_dist = (alpha0 * beta_vec[l] + n_mat[:, l] + rho0 * (l == tmp_vec) + (j == l) * (j == tmp_vec)) / (
                     alpha0 + n_mat.sum(axis=1) + rho0 + (j == tmp_vec))
+
         knew_dist = (alpha0 ** 2) * beta_vec[l] * beta_new / ((alpha0 + rho0) * (alpha0 + n_mat[j].sum() + rho0))
 
         ## compute y marginal likelihood
