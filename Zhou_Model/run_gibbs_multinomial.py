@@ -5,11 +5,13 @@
 
 # load packages
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import scipy.stats as ss
 import sys
+import tqdm
 
-sys.path.append('../../code/')
+# sys.path.append('../../code/')
+sys.path.append('.')
 from gibbs_multinomial_efox import *
 
 seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
@@ -29,10 +31,12 @@ file_name = sys.argv[4]  # file name of data
 rlt_path = sys.argv[5]  # path to save results
 
 # load data
-dat = np.load('../../data/' + file_name + '.npz')
+# dat = np.load('../../data/' + file_name + '.npz')
+dat = np.load('./data/' + file_name + '.npz')
 zt_real, yt_real = dat['zt'], dat['yt']
 # yt_real is 2d ntime-points by n-dim observations. zt_real is 1d length T1 numpy array
-test_dat = np.load('../../data/test_' + file_name + '.npz')
+# test_dat = np.load('../../data/test_' + file_name + '.npz')
+test_dat = np.load('./data/test_' + file_name + '.npz')
 yt_test = test_dat['yt']  # yt_test is 2d ntime-points by n-dim observations.
 
 T = len(yt_real)
@@ -45,7 +49,7 @@ hyperparam_sample = []
 loglik_test_sample = []
 
 rho0 = 0
-for it in range(iters):
+for it in tqdm.tqdm(range(iters), desc="running gibbs sampler:"):
     if it == 0:
         alpha0, gamma0, dir0, K, zt, beta_vec, beta_new, n_mat, ysum = init_gibbs_full_bayesian_regular(alpha0_a_pri,
                                                                                                         alpha0_b_pri,

@@ -135,7 +135,7 @@ class DirectAssignmentGibbs:
         for j in range(self.K):
             for k in range(self.K):
                 if self.transition_count[j, k] == 0:
-                    self.m_mat[j, k] = 0
+                    self.m_mat[j, k] = 0  # TODO: can be changed to continue
                 else:
                     # move this to HDP_HMM, so that rho would be hidden from direct assignment sampler
                     x_vec = np.random.binomial(1, (
