@@ -10,7 +10,7 @@ import sys
 import tqdm
 
 sys.path.append('../../code/')
-from gibbs_guassian_efox import *
+from gibbs_gaussian_efox import *
 
 seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
 

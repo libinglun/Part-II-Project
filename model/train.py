@@ -27,7 +27,7 @@ hidden_states_sample = []
 hyperparams_sample = []
 
 if __name__ == "__main__":
-    iterations = 100
+    iterations = 200
     model = HDPHMM()
 
     sampler = DirectAssignmentGibbs(model, real_observations)
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         if iteration % 10 == 0:
             sampler.sample_transition_distribution()
             # calculate the log likelihood of test observation sequence based on the new sampled transition distribution and result of direct assignment sampling (every 10 iters)
-            _, loglik = sampler.compute_log_marginal_likelihood_guassian(test_observations)
+            _, loglik = sampler.compute_log_marginal_likelihood_gaussian(test_observations)
             # output a matrix a_mat, a_mat[i, j] represents the probability of state j at time stamp i
             loglik_test_sample.append(loglik)
 

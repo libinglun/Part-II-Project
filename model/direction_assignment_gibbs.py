@@ -25,7 +25,7 @@ class DirectAssignmentGibbs:
         # Gaussian params
         self.mu0 = np.mean(self.observations)
         self.sigma_prior = np.std(self.observations) # sigma0_pr
-        self.sigma0 = 0.5
+        self.sigma0 = 0.5 # sigma0, subject to change
 
         # Multinomial params
 
@@ -145,7 +145,8 @@ class DirectAssignmentGibbs:
         for j in range(self.K):
             for k in range(self.K):
                 if self.transition_count[j, k] == 0:
-                    self.m_mat[j, k] = 0  # TODO: can be changed to continue
+                    continue
+                    # self.m_mat[j, k] = 0 # original code, changed to continue since m_mat is initialised to 0
                 else:
                     # move this to HDP_HMM, so that rho would be hidden from direct assignment sampler
                     x_vec = np.random.binomial(1, (
@@ -188,7 +189,7 @@ class DirectAssignmentGibbs:
         prob_vec[prob_vec < 0.01] = 0.01  # clip step
         self.pi_mat[-1] = np.random.dirichlet(prob_vec, size=1)[0]
 
-    def compute_log_marginal_likelihood_guassian(self, test_observations, start_point=-1):
+    def compute_log_marginal_likelihood_gaussian(self, test_observations, start_point=-1):
         # if zt is -1, then yt is a brand-new sequence starting with state 0
         # if zt is not -1, then it's the state of time point before the first time point of yt
         length = len(test_observations)
