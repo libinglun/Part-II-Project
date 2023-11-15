@@ -2,7 +2,8 @@ import numpy as np
 import tqdm
 import sys
 from hdp_hmm import HDPHMM
-from direction_assignment_gibbs import DirectAssignmentGibbs
+from direct_assign_gibbs_gaussian import DirectAssignmentGaussian
+from direct_assign_gibbs_multinomial import DirectAssignmentMultinomial
 from utils import compute_cost
 
 
@@ -11,7 +12,9 @@ seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
 seed = 0  # random seed
 np.random.seed(seed_vec[seed])  # fix randomness
 
-emission_model = 'gaussian'
+# TODO: add system argument to distinguish multinomial and gaussian model
+# emission_model = 'gaussian'
+emission_model = 'multinomial'
 file_name = "fix_8states_" + emission_model + "_same_trans_diff_stick"
 
 train_data = np.load('../data/' + file_name + '.npz')
@@ -30,7 +33,9 @@ if __name__ == "__main__":
     iterations = 200
     model = HDPHMM()
 
-    sampler = DirectAssignmentGibbs(model, real_observations)
+    # sampler = DirectAssignmentGaussian(model, real_observations)
+    sampler = DirectAssignmentMultinomial(model, real_observations)
+    # print(real_observations.shape)
 
     # the hidden states are empty initially. Fill in hidden states for the first iteration only based on last state j
     for t in range(1, sampler.seq_length):
@@ -50,7 +55,7 @@ if __name__ == "__main__":
         if iteration % 10 == 0:
             sampler.sample_transition_distribution()
             # calculate the log likelihood of test observation sequence based on the new sampled transition distribution and result of direct assignment sampling (every 10 iters)
-            _, loglik = sampler.compute_log_marginal_likelihood_gaussian(test_observations)
+            _, loglik = sampler.compute_log_marginal_likelihood(test_observations)
             # output a matrix a_mat, a_mat[i, j] represents the probability of state j at time stamp i
             loglik_test_sample.append(loglik)
 

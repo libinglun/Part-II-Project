@@ -117,8 +117,10 @@ class HDPHMM:
             if val > 0:
                 r_vec.append(np.random.beta(concentration + 1, val))
         r_vec = np.array(r_vec)
+        r_vec = r_vec.reshape(-1)  # flatten the array for multinomial cases
 
         s_vec = np.random.binomial(1, transition_row_sum / (transition_row_sum + concentration))
+        s_vec = np.array(s_vec).reshape(-1) # flatten the array for multinomial cases
 
         # minus 1 here is to offset the additional one added on m_mat[0, 0] ?
         # I added "- self.rho" to be consistent with Berkley's notes, but this is inconsistent with original codes.
