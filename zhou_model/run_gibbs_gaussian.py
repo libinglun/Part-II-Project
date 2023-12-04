@@ -1,5 +1,5 @@
 # how to run this file
-# nohup python run_full_bayesian_gibbs_gaussian_reg.py 1 20 0.5 fix_8states_gaussian_same_trans_diff_stick ./ &
+# python run_gibbs_gaussian.py 1 20 0.5 fix_8states_gaussian_same_trans_diff_stick
 # see the comments below for the meaning of these command line parameters (sys.argv)
 # note that when computing the predictive liklihood on test-data, the start point is assumed to be given. see more details in ../../code/util.py
 
@@ -37,7 +37,7 @@ test_dat = np.load('./data/test_' + file_name + '.npz')
 yt_test = test_dat['yt']  ## yt_test is 1d length T2 numpy array
 
 T = len(yt_real)
-mu0 = np.mean(yt_real)
+mu0 = np.mean(yt_real )
 sigma0_pri = np.std(yt_real)
 
 ### start gibbs

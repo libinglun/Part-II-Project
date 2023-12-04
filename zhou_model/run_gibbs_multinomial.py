@@ -1,5 +1,5 @@
 # how to run this file
-# nohup python run_full_bayesian_gibbs_multinomial_reg.py 1 20 1 fix_8states_multinomial_same_trans_diff_stick ./ &
+# python run_gibbs_multinomial.py 1 20 1 fix_8states_multinomial_same_trans_diff_stick
 # see the comments below for the meaning of these command line parameters (sys.argv)
 # note that when computing the predictive likelihood on test-data, the start point is assumed to be given. see more details in ../../code/util.py
 
@@ -60,7 +60,7 @@ for it in tqdm.tqdm(range(iters), desc="running gibbs sampler:"):
     else:
         zt, n_mat, ysum, beta_vec, beta_new, K = sample_zw(zt, yt_real, n_mat, ysum, beta_vec, beta_new, alpha0, gamma0,
                                                            dir0, rho0, K)
-    zt, n_mat, ysum, beta_vec, K = decre_K(zt, n_mat, ysum, beta_vec)
+    zt, n_mat, ysum, beta_vec, K = decre_K( zt, n_mat, ysum, beta_vec)
     m_mat = sample_m(n_mat, beta_vec, alpha0, rho0, K)
     m_mat[0, 0] += 1
     beta_vec, beta_new = sample_beta(m_mat, gamma0)

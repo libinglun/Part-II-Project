@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     # the hidden states are empty initially. Fill in hidden states for the first iteration only based on last state j
     for t in range(1, sampler.seq_length):
-        sampler.sample_hidden_states_on_last_state(t)
+        sampler.sample_one_step_ahead(t)
 
     for iteration in tqdm.tqdm(range(iterations), desc="training sampler:"):
         for t in range(1, sampler.seq_length - 1):

@@ -102,7 +102,7 @@ class HDPHMM:
     def update_beta_with_new_state(self):
         b = np.random.beta(1, self.gamma, size=1)
         self.beta_vec = np.hstack((self.beta_vec, b * self.beta_new))
-        self.beta_new *= (1 - b)
+        self.beta_new = (1 - b) * self.beta_new
 
     def update_beta_with_new_params(self, param_vec):
         self.beta_vec = np.random.dirichlet(np.hstack((param_vec, self.gamma)), size=1)[0]
@@ -125,7 +125,7 @@ class HDPHMM:
         # minus 1 here is to offset the additional one added on m_mat[0, 0] ?
         # I added "- self.rho" to be consistent with Berkley's notes, but this is inconsistent with original codes.
         self.alpha = np.random.gamma(self.alpha_a_prior + m_total_sum - 1 - sum(s_vec),
-                              1 / (self.alpha_b_prior - sum(np.log(r_vec + CONST_EPS)))) - self.rho
+                              1 / (self.alpha_b_prior - sum(np.log(r_vec + CONST_EPS))))
 
     def update_gamma(self, m_total_sum, K):
         """
@@ -136,7 +136,8 @@ class HDPHMM:
         """
         eta = np.random.beta(self.gamma + 1, m_total_sum)
 
-        indicator = np.random.binomial(1, m_total_sum / (m_total_sum + self.gamma))
+        # indicator = np.random.binomial(1, m_total_sum / (m_total_sum + self.gamma))
+        indicator = (self.gamma_a_prior + K - 1) / (self.gamma_a_prior + K - 1 + m_total_sum * (self.gamma_b_prior - np.log(eta + CONST_EPS)))
 
         if indicator:
             self.gamma = np.random.gamma(self.gamma_a_prior + K, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
