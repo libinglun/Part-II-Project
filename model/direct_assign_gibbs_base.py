@@ -61,6 +61,8 @@ class DirectAssignment(ABC):
 
     def sample_beta(self):
         param_vec = np.array(self.m_mat.sum(axis=0))
+        print(self.m_mat.sum(axis=0))
+        assert np.all(param_vec > 0), "All alpha values must be > 0"
         self.model.update_beta_with_new_params(param_vec)
 
     def sample_alpha(self):

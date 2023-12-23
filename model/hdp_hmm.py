@@ -11,9 +11,10 @@ class HDPHMM:
     but require complex argument passing from training to sampler and then to the model. Also, did not find a good way for the hierarchy.
     """
 
-    def __init__(self, alpha_a_prior=1, alpha_b_prior=0.01, gamma_a_prior=2, gamma_b_prior=1, rho0=0):
-
+    def __init__(self, alpha_a_prior=0.1, alpha_b_prior=0.01, gamma_a_prior=2, gamma_b_prior=1, rho0=0):
+        # TODO: change alpha_a_prior would change the distribution of posterior
         self.alpha_a_prior = alpha_a_prior
+        # TODO: change alpha_b_prior would change the number of states K
         self.alpha_b_prior = alpha_b_prior
         # the reciprocal might be due to parameter specification -- need to double-check
         self.alpha = np.random.gamma(alpha_a_prior, 1 / alpha_b_prior)
@@ -43,8 +44,12 @@ class HDPHMM:
         emission_pdf, emission_pdf_new = emission_func()
         # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are arrays with length K
         observation_dist = emission_pdf(observation)
+        # print("observation_dist:", observation_dist)
+        if np.any(observation_dist < 0):
+            raise ValueError("Probabilities in observation_dist must be greater than 0")
         # new hidden state (cluster) with new observation emission pdf
         observation_dist_with_new = emission_pdf_new(observation)
+        # print("observation_dist_with_new:", observation_dist)
 
         # construct z's posterior over k
         # add new column at the end of distribution array

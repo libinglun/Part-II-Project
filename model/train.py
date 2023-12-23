@@ -13,8 +13,8 @@ seed = 0  # random seed
 np.random.seed(seed_vec[seed])  # fix randomness
 
 # TODO: add system argument to distinguish multinomial and gaussian model
-# emission_model = 'gaussian'
-emission_model = 'multinomial'
+emission_model = 'gaussian'
+# emission_model = 'multinomial'
 file_name = "fix_8states_" + emission_model + "_same_trans_diff_stick"
 
 train_data = np.load('../data/' + file_name + '.npz')
@@ -24,6 +24,7 @@ real_hidden_states = train_data['zt']
 real_observations = train_data['yt']
 
 test_observations = test_data['yt']
+# test_hidden_states= test_data['zt']
 
 loglik_test_sample = []
 hidden_states_sample = []
@@ -33,8 +34,8 @@ if __name__ == "__main__":
     iterations = 200
     model = HDPHMM()
 
-    # sampler = DirectAssignmentGaussian(model, real_observations)
-    sampler = DirectAssignmentMultinomial(model, real_observations)
+    sampler = DirectAssignmentGaussian(model, real_observations)
+    # sampler = DirectAssignmentMultinomial(model, real_observations)
     # print(real_observations.shape)
 
     # the hidden states are empty initially. Fill in hidden states for the first iteration only based on last state j
