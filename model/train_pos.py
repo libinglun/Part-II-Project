@@ -19,7 +19,7 @@ np.random.seed(seed_vec[seed])  # fix randomness
 treebank_lang = Lang("Penn Treebank", treebank.tagged_sents())
 token_indices, pos_tags = treebank_lang.build_dataset()
 vocab_size = treebank_lang.nth_words # index: 0 ~ 5750
-# print("Dataset: ", token_indices[2000], file=sys.stderr)
+print("Dataset size: ", len(token_indices), file=sys.stderr)    # 3903 sentences
 print("Vocabulary Size: ", vocab_size, file=sys.stderr)
 
 # TODO: split after preprocessing -- still possible that words in test_sentences not seen after training
@@ -32,39 +32,55 @@ hidden_states_sample = []
 hyperparams_sample = []
 
 np.set_printoptions(suppress=True, precision=4)
+np.set_printoptions(linewidth=180)
+np.set_printoptions(formatter={'int': '{:5d}'.format})
 
 if __name__ == "__main__":
     if token_indices == [] or pos_tags == []:
         print("Failed to load input!", file=sys.stderr)
-    iterations = 200
+    iterations = 20
     model = HDPHMM()
-    sampler = DirectAssignmentPOS(model, token_indices[0], vocab_size)
+    sampler = DirectAssignmentPOS(model, train_sentences, vocab_size)
 
     for iteration in tqdm.tqdm(range(iterations), desc="training sampler:"):
         # first iteration as burn-in
         if iteration == 0:
-            for sentence in train_sentences:
-                sampler.new_observation(sentence)
-                for t in range(1, sampler.seq_length):
-                    sampler.sample_one_step_ahead(t)
-                    # print(sampler.K)
-                # print("outside:", sampler.K)
-            break
+            for index, sentence in enumerate(train_sentences):
+                for t in range(1, sampler.seq_length[index]):
+                    sampler.sample_one_step_ahead(index, t)
+            print("Burn-in K:", sampler.K)
+            # print(sampler.hidden_states[:5])
+            print("transition count:", sampler.transition_count)
         else:
-            for sentence in train_sentences:
-                sampler.new_observation(sentence)
-                for t in range(1, sampler.seq_length - 1):
-                    sampler.sample_hidden_states_on_last_next_state(t)
-                sampler.sample_hidden_states_on_last_state(sampler.seq_length - 1)
-                sampler.update_K()
-                sampler.sample_m()
-                sampler.sample_beta()
-                sampler.sample_alpha()
-                sampler.sample_gamma()
-                if iteration % 10 == 0:
-                    hidden_states_sample.append(sampler.hidden_states.copy())
-                    hyperparams_sample.append(np.array([sampler.model.alpha, sampler.model.gamma]))
+            for index, sentence in enumerate(train_sentences):
+                # print("hidden states before:", sampler.hidden_states[index])
+                for t in range(1, sampler.seq_length[index] - 1):
+                    sampler.sample_hidden_states_on_last_next_state(index, t)
+                sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
+                if np.any(sampler.transition_count < 0):
+                    print(index)
+                    raise ValueError("Negative transition count -- outside")
+                # print("hidden states after sample:", sampler.hidden_states[index])
 
+            sampler.update_K()
+            # print("hidden states after update K:", sampler.hidden_states[:5])
+            print("new K: ", sampler.K)
+            sampler.sample_m()
+            sampler.sample_beta()
+            sampler.sample_alpha()
+            sampler.sample_gamma()
+
+            # if iteration % 10 == 0:
+            #     hidden_states_sample.append(sampler.hidden_states.copy())
+            #     hyperparams_sample.append(np.array([sampler.model.alpha, sampler.model.gamma]))
+            # print("shape:" , sampler.token_state_matrix.shape)
+
+        # print(sampler.token_state_matrix.dtype)
+        print("token_state_matrix:")
+        for i in range(10, 20):
+            print(sampler.token_state_matrix[i].astype(int))
+
+        """
         if iteration % 10 == 0:
             # sample transition distribution matrix based on the result of direct assignment sampling
             sampler.sample_transition_distribution()
@@ -78,10 +94,8 @@ if __name__ == "__main__":
 
             # save the result of sampled hyperparameter
             hyperparams_sample.append(np.array([sampler.model.alpha, sampler.model.gamma]))
+        """
 
-    print(sampler.token_state_matrix.dtype)
-    for i in range(10, 20):
-        print(sampler.token_state_matrix[i].astype(int))
 
 mismatch_vec = []
 zt_sample_permute = []

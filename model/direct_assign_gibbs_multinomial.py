@@ -7,6 +7,9 @@ from direct_assign_gibbs_base import DirectAssignment
 class DirectAssignmentMultinomial(DirectAssignment):
     def __init__(self, model, observations, dir0=1):
         DirectAssignment.__init__(self, model, observations)
+        self.observations = observations
+        self.seq_length = len(self.observations)
+        self.hidden_states = np.zeros(self.seq_length, dtype='int')
 
         # (ysum) data points at each state (cluster), for multinomial
         self.observed_data = np.array([observations[0]])

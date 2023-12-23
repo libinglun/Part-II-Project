@@ -8,6 +8,9 @@ from scipy import special as special
 class DirectAssignmentGaussian(DirectAssignment):
     def __init__(self, model, observations):
         DirectAssignment.__init__(self, model, observations)
+        self.observations = observations
+        self.seq_length = len(self.observations)
+        self.hidden_states = np.zeros(self.seq_length, dtype='int')
 
         # emission params
         # (ysum) data points sum at each state (cluster), for Gaussian, we would calculate the sum of all observations for Gaussian use

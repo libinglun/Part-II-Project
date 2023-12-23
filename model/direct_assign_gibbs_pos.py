@@ -1,10 +1,15 @@
 import numpy as np
 import scipy.stats as stats
-from direct_assign_gibbs_base import DirectAssignment
 
-class DirectAssignmentPOS(DirectAssignment):
+class DirectAssignmentPOS:
     def __init__(self, model, observations, vocab_size):
-        DirectAssignment.__init__(self, model, observations)
+        # observations are all observation of training set
+        self.observations = observations
+        self.dataset_length = len(observations)
+        # a list of sequence_length
+        self.seq_length = [len(obs) for obs in self.observations]
+        # matrix of number of sequence * sequence_length
+        self.hidden_states = [np.zeros(seq_len, dtype='int') for seq_len in self.seq_length]
 
         # tokens are indices of word
         self.vocab_size = vocab_size
@@ -12,45 +17,45 @@ class DirectAssignmentPOS(DirectAssignment):
         self.token_state_matrix = np.zeros((self.vocab_size, 1), dtype='int')
         print(self.token_state_matrix.shape)
 
-    # def initialize_emission_matrix(self, dataset: list[list[int]], vocab_size):
-    #     token2count = np.zeros((vocab_size, 1))
-    #     for sentence in dataset:
-    #         for word in sentence:
-    #             token2count[word] += 1
-    #
-    #     return token2count
-
+        self.model = model
+        self.transition_count = np.array([[0]])  # (n_mat)
+        self.m_mat = None
+        self.pi_mat = None
+        self.K = 1
 
     def emission_pdf(self):
         # smoothing for 0 counts + uniform distribution for a new state since all 0 counts
         return (lambda x: (self.token_state_matrix[x] + 1) / (self.token_state_matrix[x].sum() + self.K)), (lambda x: 1 / self.K)
 
-    def new_observation(self, new_observation):
-        # reinitialise observations and hidden states for each new sentence
-        self.observations = new_observation
-        self.seq_length = len(new_observation)
-        self.hidden_states = np.zeros(self.seq_length, dtype='int')
-        # TODO: reinitialise transition_count or not?
-        self.transition_count = np.zeros((self.K, self.K))
+    # def new_observation(self, new_observation, hidden_states):
+    #     # reinitialise observations and hidden states for each new sentence
+    #     self.observations = new_observation
+    #     self.seq_length = len(new_observation)
+    #     if hidden_states is None:
+    #         self.hidden_states = np.zeros(self.seq_length, dtype='int')
+    #     else:
+    #         self.hidden_states = hidden_states
+    #     # TODO: reinitialise transition_count or not?
+    #     # self.transition_count = np.zeros((self.K, self.K))
 
 
     # TODO: use sample_one_step_ahead as burn-in, don't need to initialise!!!
-    def sample_one_step_ahead(self, t):
+    def sample_one_step_ahead(self, index, t):
         # j is the hidden state value, ranging from 0 to T - 1
-        last_state = self.hidden_states[t - 1]
+        last_state = self.hidden_states[index][t - 1]
 
         # derive the current hidden state posterior over K states
-        posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[t],
+        posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[index][t],
                                                                        self.transition_count, self.K,
                                                                        self.emission_pdf)
 
         # print("posterior:", posterior)
 
         # update the current hidden state by multinomial
-        self.hidden_states[t] = np.where(np.random.multinomial(1, posterior))[0][0]
+        self.hidden_states[index][t] = np.where(np.random.multinomial(1, posterior))[0][0]
 
         # update beta_vec, n_mat when having a new state
-        have_new_state = (self.hidden_states[t] == self.K)
+        have_new_state = (self.hidden_states[index][t] == self.K)
 
         if have_new_state:
             self.model.update_beta_with_new_state()
@@ -65,22 +70,24 @@ class DirectAssignmentPOS(DirectAssignment):
 
         # print("K:", self.K)
 
-        self.transition_count[last_state, self.hidden_states[t]] += 1
-        self.token_state_matrix[self.observations[t]][self.hidden_states[t]] += 1
+        self.transition_count[last_state, self.hidden_states[index][t]] += 1
+        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
         # print(self.token_state_matrix.sum())
 
-    def sample_hidden_states_on_last_state(self, t):
+    def sample_hidden_states_on_last_state(self, index, t):
         # j is the hidden state value, ranging from 0 to T - 1
-        last_state = self.hidden_states[t - 1]
+        last_state = self.hidden_states[index][t - 1]
 
         # exclude the counts of the current state
-        self.transition_count[last_state, self.hidden_states[t]] -= 1
+        self.transition_count[last_state, self.hidden_states[index][t]] -= 1
+        assert np.any(self.transition_count > 0), "Negative transition count"
+
         # print("before decrement: " , self.token_state_matrix[self.observations[t]], self.hidden_states[t])
-        self.token_state_matrix[self.observations[t]][self.hidden_states[t]] -= 1
+        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
         # print("after decrement: ", self.token_state_matrix[self.observations[t]])
 
         # derive the current hidden state posterior over K states
-        posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[t],
+        posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[index][t],
                                                                        self.transition_count, self.K,
                                                                        self.emission_pdf)
 
@@ -92,10 +99,10 @@ class DirectAssignmentPOS(DirectAssignment):
             raise ValueError("Posterior contains NaNs")
 
         # update the current hidden state by multinomial
-        self.hidden_states[t] = np.where(np.random.multinomial(1, posterior))[0][0]
+        self.hidden_states[index][t] = np.where(np.random.multinomial(1, posterior))[0][0]
 
         # update beta_vec, n_mat when having a new state
-        have_new_state = (self.hidden_states[t] == self.K)
+        have_new_state = (self.hidden_states[index][t] == self.K)
 
         if have_new_state:
             self.model.update_beta_with_new_state()
@@ -106,28 +113,36 @@ class DirectAssignmentPOS(DirectAssignment):
 
             self.K += 1
 
-        self.transition_count[last_state, self.hidden_states[t]] += 1
-        self.token_state_matrix[self.observations[t]][self.hidden_states[t]] += 1
+        self.transition_count[last_state, self.hidden_states[index][t]] += 1
+        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
 
-    def sample_hidden_states_on_last_next_state(self, t):
+    def sample_hidden_states_on_last_next_state(self, index, t):
         # define last_state(j), next_state(l)
-        last_state = self.hidden_states[t - 1]
-        next_state = self.hidden_states[t + 1]
+        last_state = self.hidden_states[index][t - 1]
+        next_state = self.hidden_states[index][t + 1]
+
+        if np.any(self.transition_count < 0):
+            print("QAQ")
 
         # exclude the counts of the current state
-        self.transition_count[last_state, self.hidden_states[t]] -= 1
-        self.transition_count[self.hidden_states[t], next_state] -= 1
-        print("before decrement: " , self.token_state_matrix[self.observations[t]], self.hidden_states[t])
-        self.token_state_matrix[self.observations[t]][self.hidden_states[t]] -= 1
-        print("after decrement: ", self.token_state_matrix[self.observations[t]])
+        # print("transition count:", self.transition_count)
+        self.transition_count[last_state, self.hidden_states[index][t]] -= 1
+        self.transition_count[self.hidden_states[index][t], next_state] -= 1
+        assert np.any(self.transition_count > 0), "Negative transition count"
+
+        # print("observation: ", self.observations[index])
+        # print("before decrement: ", self.token_state_matrix[self.observations[index][t]], self.hidden_states[index][t], self.K)
+        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
+        # print("after decrement: ", self.token_state_matrix[self.observations[index][t]])
 
         # derive the current hidden state posterior over K states
-        posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[t],
+        posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[index][t],
                                                                        self.transition_count, self.K,
                                                                        self.emission_pdf)
 
         # print(posterior)
         if np.any(posterior < 0):
+            print(posterior)
             raise ValueError("Probabilities in posterior must be greater than 0")
         if np.any(posterior > 1):
             raise ValueError("Probabilities in posterior must be smaller than 1")
@@ -135,10 +150,10 @@ class DirectAssignmentPOS(DirectAssignment):
             raise ValueError("Posterior contains NaNs")
 
         # update the current hidden state by multinomial
-        self.hidden_states[t] = np.where(np.random.multinomial(1, posterior))[0][0]
+        self.hidden_states[index][t] = np.where(np.random.multinomial(1, posterior))[0][0]
 
         # update beta_vec, n_mat when having a new state
-        have_new_state = (self.hidden_states[t] == self.K)
+        have_new_state = (self.hidden_states[index][t] == self.K)
 
         if have_new_state:
             self.model.update_beta_with_new_state()
@@ -149,18 +164,25 @@ class DirectAssignmentPOS(DirectAssignment):
 
             self.K += 1
 
-        self.transition_count[last_state, self.hidden_states[t]] += 1
-        self.transition_count[self.hidden_states[t], next_state] += 1
-        self.token_state_matrix[self.observations[t]][self.hidden_states[t]] += 1
+        if np.any(self.transition_count < 0):
+            print("index: ", index)
+            raise ValueError("Negative transition count -- ?")
+
+        self.transition_count[last_state, self.hidden_states[index][t]] += 1
+        self.transition_count[self.hidden_states[index][t], next_state] += 1
+        # print("before increment: ", self.token_state_matrix[self.observations[index][t]])
+        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
+        # print("after increment: ", self.token_state_matrix[self.observations[index][t]])
 
     def update_K(self):
-        # rem_ind contains all the unique value of zt
-        remain_index = np.unique(self.hidden_states)
+        # remain_index = sorted unique elements of hidden states
+        remain_index = np.unique(np.concatenate(self.hidden_states)).astype(int)
 
         # a dictionary with key = state, value = the sorted index (map old states to new states)
-        state_mapping = {k: v for v, k in enumerate(sorted(remain_index))}
+        state_mapping = {state: idx for idx, state in enumerate(remain_index)}
         # use indexes as the new states
-        self.hidden_states = np.array([state_mapping[state] for state in self.hidden_states])
+        for i in range(self.dataset_length):
+            self.hidden_states[i] = np.array([state_mapping[state] for state in self.hidden_states[i]])
 
         # only select rows and columns of n_mat according to the index of rem_ind
 
@@ -204,3 +226,56 @@ class DirectAssignmentPOS(DirectAssignment):
         log_marginal_lik = sum(np.log(c_vec))
         # output a matrix a_mat, a_mat[i, j] represents the probability of state j at time stamp i
         return a_mat, log_marginal_lik
+
+
+    def sample_m(self):
+        self.m_mat = np.zeros((self.K, self.K))
+
+        for j in range(self.K):
+            for k in range(self.K):
+                if self.transition_count[j, k] == 0:
+                    continue
+                    # self.m_mat[j, k] = 0 # original code, changed to continue since m_mat is initialised to 0
+                else:
+                    # move this to HDP_HMM, so that rho would be hidden from direct assignment sampler
+                    x_vec = np.random.binomial(1, (
+                            self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)) / (
+                                                       np.arange(self.transition_count[j, k]) + self.model.alpha *
+                                                       self.model.beta_vec[k] + self.model.rho * (j == k)))
+                    x_vec = np.array(x_vec).reshape(-1)
+                    self.m_mat[j, k] = sum(x_vec)
+
+        self.m_mat[0, 0] += 1
+
+    def sample_beta(self):
+        param_vec = np.array(self.m_mat.sum(axis=0))
+        # print(self.m_mat.sum(axis=0))
+        assert np.all(param_vec > 0), "All alpha values must be > 0"
+        self.model.update_beta_with_new_params(param_vec)
+
+    def sample_alpha(self):
+        # row sum of transition counts (n_(j.))
+        transition_row_sum = self.transition_count.sum(axis=1)
+
+        # sum given all axis of m_mat
+        total_sum = self.m_mat.sum()
+
+        self.model.update_alpha(transition_row_sum, total_sum)
+
+    def sample_gamma(self):
+        # sum given all axis of m_mat
+        total_sum = self.m_mat.sum()
+        self.model.update_gamma(total_sum, self.K)
+
+    def sample_transition_distribution(self):
+        self.pi_mat = np.zeros((self.K + 1, self.K + 1))
+        for j in range(self.K):
+            prob_vec = np.hstack((self.model.alpha * self.model.beta_vec + self.transition_count[j],
+                                  self.model.alpha * self.model.beta_new))
+            prob_vec[j] += self.model.rho
+            prob_vec[prob_vec < 0.01] = 0.01  # clip step
+            self.pi_mat[j] = np.random.dirichlet(prob_vec, size=1)[0]
+        prob_vec = np.hstack(
+            (self.model.alpha * self.model.beta_vec, self.model.alpha * self.model.beta_new + self.model.rho))
+        prob_vec[prob_vec < 0.01] = 0.01  # clip step
+        self.pi_mat[-1] = np.random.dirichlet(prob_vec, size=1)[0]

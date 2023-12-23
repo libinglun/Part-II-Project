@@ -8,10 +8,6 @@ class DirectAssignment(ABC):
     def __init__(self, model, observations):
         self.model = model
 
-        self.observations = observations
-        self.seq_length = len(observations)
-        self.hidden_states = np.zeros(self.seq_length, dtype='int')
-
         self.transition_count = np.array([[0]])  # (n_mat)
         self.m_mat = None
         self.pi_mat = None
@@ -61,7 +57,7 @@ class DirectAssignment(ABC):
 
     def sample_beta(self):
         param_vec = np.array(self.m_mat.sum(axis=0))
-        print(self.m_mat.sum(axis=0))
+        # print(self.m_mat.sum(axis=0))
         assert np.all(param_vec > 0), "All alpha values must be > 0"
         self.model.update_beta_with_new_params(param_vec)
 

@@ -62,5 +62,9 @@ class Lang:
         self.filter_freq(filter_level=2)
         self.create_indices()
         token_indices = self.convert_indices(tokenized_sentences)
-        return token_indices, pos_tags
+        # filter sentences that contains only one word
+        filter_mask = [len(indices) > 1 for indices in token_indices]
+        filtered_token_indices = [t for t, m in zip(token_indices, filter_mask) if m]
+        filtered_pos_tags = [p for p, m in zip(pos_tags, filter_mask) if m]
+        return filtered_token_indices, filtered_pos_tags
 

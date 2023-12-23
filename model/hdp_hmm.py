@@ -5,12 +5,6 @@ CONST_EPS = 1e-6
 
 
 class HDPHMM:
-    """
-    Parameter rho revered for sticky-HDP, however, other versions might not be compatible.
-    Some functions such as sampling and updating beta are implemented in the sampler class, might consider implement in the HDP-HMM model
-    but require complex argument passing from training to sampler and then to the model. Also, did not find a good way for the hierarchy.
-    """
-
     def __init__(self, alpha_a_prior=0.1, alpha_b_prior=0.01, gamma_a_prior=2, gamma_b_prior=1, rho0=0):
         # TODO: change alpha_a_prior would change the distribution of posterior
         self.alpha_a_prior = alpha_a_prior
@@ -77,6 +71,11 @@ class HDPHMM:
         current_hidden_state_dist = (
                 (self.alpha * self.beta_vec + transition_count[last_state] + self.rho * (last_state == tmp_vec))
                 / (self.alpha + transition_count[last_state].sum() + self.rho))
+        if np.any(current_hidden_state_dist < 0):
+            print(current_hidden_state_dist)
+            print(transition_count[last_state])
+            raise ValueError("Probabilities in hidden_state must be greater than 0")
+
         # p(z_t+1 = l|params)
         next_hidden_state_dist = (
                 (self.alpha * self.beta_vec[next_state] + transition_count[:, next_state] + self.rho * (
@@ -87,6 +86,10 @@ class HDPHMM:
         emission_pdf, emission_pdf_new = emission_func()
         # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are a single float
         observation_dist = emission_pdf(observation)
+        if np.any(observation_dist < 0):
+            print(observation_dist)
+            raise ValueError("Probabilities in emission must be greater than 0")
+
         # new hidden state (cluster) with new observation emission pdf
         observation_dist_with_new = emission_pdf_new(observation)
 
