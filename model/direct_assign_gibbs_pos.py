@@ -24,19 +24,11 @@ class DirectAssignmentPOS:
         self.K = 1
 
     def emission_pdf(self):
-        # smoothing for 0 counts + uniform distribution for a new state since all 0 counts
-        return (lambda x: (self.token_state_matrix[x] + 1) / (self.token_state_matrix[x].sum() + self.K)), (lambda x: 1 / self.K)
-
-    # def new_observation(self, new_observation, hidden_states):
-    #     # reinitialise observations and hidden states for each new sentence
-    #     self.observations = new_observation
-    #     self.seq_length = len(new_observation)
-    #     if hidden_states is None:
-    #         self.hidden_states = np.zeros(self.seq_length, dtype='int')
-    #     else:
-    #         self.hidden_states = hidden_states
-    #     # TODO: reinitialise transition_count or not?
-    #     # self.transition_count = np.zeros((self.K, self.K))
+        # TODO: can have more complex smoothing -- introduce hyperparameter for the smoothing count
+        column_sums = self.token_state_matrix.sum(axis=0)       # axis = 0 -- column sums
+        fun1 = lambda x: (self.token_state_matrix[x] + 1) / (column_sums + self.vocab_size)
+        fun2 = lambda x: 1 / self.vocab_size
+        return fun1, fun2
 
 
     # TODO: use sample_one_step_ahead as burn-in, don't need to initialise!!!
