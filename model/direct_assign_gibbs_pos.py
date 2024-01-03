@@ -30,6 +30,13 @@ class DirectAssignmentPOS:
         fun2 = lambda x: 1 / self.vocab_size
         return fun1, fun2
 
+    def initialise_first_state(self, index):
+        tmp = np.arange(self.K) + 1
+        self.hidden_states[index][0] = np.where(np.random.multinomial(1, np.random.dirichlet(tmp)))[0][0]
+        self.token_state_matrix[self.observations[index][0]][self.hidden_states[index][0]] += 1
+        # if index <= 5:
+        #     print("first state: ", self.hidden_states[index][0])
+
 
     # TODO: use sample_one_step_ahead as burn-in, don't need to initialise!!!
     def sample_one_step_ahead(self, index, t):
@@ -40,8 +47,8 @@ class DirectAssignmentPOS:
         posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[index][t],
                                                                        self.transition_count, self.K,
                                                                        self.emission_pdf)
-
-        # print("posterior:", posterior)
+        # posterior = np.random.uniform(0, 1, self.K+1)
+        # posterior = posterior / posterior.sum()
 
         # update the current hidden state by multinomial
         self.hidden_states[index][t] = np.where(np.random.multinomial(1, posterior))[0][0]
@@ -66,16 +73,47 @@ class DirectAssignmentPOS:
         self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
         # print(self.token_state_matrix.sum())
 
+    def sample_hidden_states_on_next_state(self, index, t):
+        # j is the hidden state value, ranging from 0 to T - 1
+        next_state = self.hidden_states[index][t + 1]
+
+        # exclude the counts of the current state
+        self.transition_count[self.hidden_states[index][t], next_state] -= 1
+        assert np.any(self.transition_count[self.hidden_states[index][t]] >= 0), f"Negative transition count, {index}"
+
+        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
+        assert np.any(self.token_state_matrix[self.observations[index][t]] >= 0), f"Negative emission count, {self.hidden_states[index]}, {index}"
+
+        # derive the current hidden state posterior over K states
+        posterior = self.model.hidden_states_posterior_with_next_state(next_state, self.observations[index][t],
+                                                                       self.transition_count, self.K,
+                                                                       self.emission_pdf)
+
+        if np.any(posterior < 0):
+            raise ValueError("Probabilities in posterior must be greater than 0")
+        if np.any(posterior > 1):
+            raise ValueError("Probabilities in posterior must be smaller than 1")
+        if np.any(np.isnan(posterior)):
+            raise ValueError("Posterior contains NaNs")
+
+        # update the current hidden state by multinomial
+        self.hidden_states[index][t] = np.where(np.random.multinomial(1, posterior))[0][0]
+
+        self.transition_count[self.hidden_states[index][t], next_state] += 1
+        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
+
+
     def sample_hidden_states_on_last_state(self, index, t):
         # j is the hidden state value, ranging from 0 to T - 1
         last_state = self.hidden_states[index][t - 1]
 
         # exclude the counts of the current state
         self.transition_count[last_state, self.hidden_states[index][t]] -= 1
-        assert np.any(self.transition_count > 0), "Negative transition count"
+        assert np.any(self.transition_count[self.hidden_states[index][t]] >= 0), "Negative transition count"
 
         # print("before decrement: " , self.token_state_matrix[self.observations[t]], self.hidden_states[t])
         self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
+        assert np.any(self.token_state_matrix[self.observations[index][t]] >= 0), "Negative emission count"
         # print("after decrement: ", self.token_state_matrix[self.observations[t]])
 
         # derive the current hidden state posterior over K states
@@ -229,13 +267,16 @@ class DirectAssignmentPOS:
                     continue
                     # self.m_mat[j, k] = 0 # original code, changed to continue since m_mat is initialised to 0
                 else:
-                    # move this to HDP_HMM, so that rho would be hidden from direct assignment sampler
                     x_vec = np.random.binomial(1, (
                             self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)) / (
                                                        np.arange(self.transition_count[j, k]) + self.model.alpha *
                                                        self.model.beta_vec[k] + self.model.rho * (j == k)))
                     x_vec = np.array(x_vec).reshape(-1)
                     self.m_mat[j, k] = sum(x_vec)
+
+        # TODO: need to verify
+        # for i in range(self.dataset_length):
+        #     self.m_mat[self.hidden_states[i][0], self.hidden_states[i][0]] += 1
 
         self.m_mat[0, 0] += 1
 

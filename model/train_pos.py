@@ -46,21 +46,20 @@ if __name__ == "__main__":
         # first iteration as burn-in
         if iteration == 0:
             for index, sentence in enumerate(train_sentences):
+                # sampler.initialise_first_state(index)
                 for t in range(1, sampler.seq_length[index]):
                     sampler.sample_one_step_ahead(index, t)
             print("Burn-in K:", sampler.K)
-            # print(sampler.hidden_states[:5])
             print("transition count:", sampler.transition_count)
         else:
             for index, sentence in enumerate(train_sentences):
-                # print("hidden states before:", sampler.hidden_states[index])
+                # sampler.sample_hidden_states_on_next_state(index, 0)
                 for t in range(1, sampler.seq_length[index] - 1):
                     sampler.sample_hidden_states_on_last_next_state(index, t)
                 sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
                 if np.any(sampler.transition_count < 0):
                     print(index)
                     raise ValueError("Negative transition count -- outside")
-                # print("hidden states after sample:", sampler.hidden_states[index])
 
             sampler.update_K()
             # print("hidden states after update K:", sampler.hidden_states[:5])
@@ -69,6 +68,7 @@ if __name__ == "__main__":
             sampler.sample_beta()
             sampler.sample_alpha()
             sampler.sample_gamma()
+            # print("alpha: ", sampler.model.alpha, "gamma: ", sampler.model.gamma)
 
             # if iteration % 10 == 0:
             #     hidden_states_sample.append(sampler.hidden_states.copy())
