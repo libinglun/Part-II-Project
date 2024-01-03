@@ -12,7 +12,6 @@ from NLTK_treebank import Lang
 nltk.download('treebank')
 
 seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
-
 seed = 0  # random seed
 np.random.seed(seed_vec[seed])  # fix randomness
 
@@ -21,6 +20,7 @@ token_indices, pos_tags = treebank_lang.build_dataset()
 vocab_size = treebank_lang.nth_words # index: 0 ~ 5750
 print("Dataset size: ", len(token_indices), file=sys.stderr)    # 3903 sentences
 print("Vocabulary Size: ", vocab_size, file=sys.stderr)
+# print(token_indices[:10])
 
 # TODO: split after preprocessing -- still possible that words in test_sentences not seen after training
 train_sentences, test_sentences, train_tags, test_tags = train_test_split(
@@ -37,7 +37,7 @@ np.set_printoptions(formatter={'int': '{:5d}'.format})
 
 if __name__ == "__main__":
     if token_indices == [] or pos_tags == []:
-        print("Failed to load input!", file=sys.stderr)
+        raise ValueError("Failed to load input!")
     iterations = 20
     model = HDPHMM()
     sampler = DirectAssignmentPOS(model, train_sentences, vocab_size)
@@ -45,14 +45,14 @@ if __name__ == "__main__":
     for iteration in tqdm.tqdm(range(iterations), desc="training sampler:"):
         # first iteration as burn-in
         if iteration == 0:
-            for index, sentence in enumerate(train_sentences):
+            for index in range(len(train_sentences)):
                 # sampler.initialise_first_state(index)
                 for t in range(1, sampler.seq_length[index]):
                     sampler.sample_one_step_ahead(index, t)
             print("Burn-in K:", sampler.K)
             print("transition count:", sampler.transition_count)
         else:
-            for index, sentence in enumerate(train_sentences):
+            for index in range(len(train_sentences)):
                 # sampler.sample_hidden_states_on_next_state(index, 0)
                 for t in range(1, sampler.seq_length[index] - 1):
                     sampler.sample_hidden_states_on_last_next_state(index, t)

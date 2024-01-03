@@ -5,7 +5,7 @@ CONST_EPS = 1e-6
 
 
 class HDPHMM:
-    def __init__(self, alpha_a_prior=0.1, alpha_b_prior=0.01, gamma_a_prior=2, gamma_b_prior=1, rho0=0):
+    def __init__(self, alpha_a_prior=1, alpha_b_prior=0.01, gamma_a_prior=2, gamma_b_prior=1, rho0=0):
         # TODO: change alpha_a_prior would change the distribution of posterior
         self.alpha_a_prior = alpha_a_prior
         # TODO: change alpha_b_prior would change the number of states K
@@ -98,7 +98,7 @@ class HDPHMM:
         if np.any(current_hidden_state_dist < 0):
             print(current_hidden_state_dist)
             print(transition_count[last_state])
-            raise ValueError("Probabilities in hidden_state must be greater than 0")
+            raise ValueError("Probabilities in hidden_state(last) must be greater than 0")
 
         # p(z_t+1 = l|params)
         next_hidden_state_dist = (
@@ -106,6 +106,11 @@ class HDPHMM:
                         next_state == tmp_vec) + (
                          last_state == next_state) * (last_state == tmp_vec))
                 / (self.alpha + transition_count.sum(axis=1) + self.rho + (last_state == tmp_vec)))
+        if np.any(next_hidden_state_dist < 0):
+            print(last_state, next_state)
+            print(next_hidden_state_dist)
+            print(transition_count)
+            raise ValueError("Probabilities in hidden_states(next) must be greater than 0")
 
         emission_pdf, emission_pdf_new = emission_func()
         # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are a single float

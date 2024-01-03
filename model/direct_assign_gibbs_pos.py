@@ -10,6 +10,7 @@ class DirectAssignmentPOS:
         self.seq_length = [len(obs) for obs in self.observations]
         # matrix of number of sequence * sequence_length
         self.hidden_states = [np.zeros(seq_len, dtype='int') for seq_len in self.seq_length]
+        self.K = 1
 
         # tokens are indices of word
         self.vocab_size = vocab_size
@@ -18,10 +19,10 @@ class DirectAssignmentPOS:
         print(self.token_state_matrix.shape)
 
         self.model = model
-        self.transition_count = np.array([[0]])  # (n_mat)
+        self.transition_count = np.zeros((self.K, self.K))  # (n_mat)
         self.m_mat = None
         self.pi_mat = None
-        self.K = 1
+
 
     def emission_pdf(self):
         # TODO: can have more complex smoothing -- introduce hyperparameter for the smoothing count
@@ -152,7 +153,9 @@ class DirectAssignmentPOS:
         next_state = self.hidden_states[index][t + 1]
 
         if np.any(self.transition_count < 0):
-            print("QAQ")
+            print("index: ", index)
+            print(self.transition_count)
+            raise ValueError("Negative transition count")
 
         # exclude the counts of the current state
         # print("transition count:", self.transition_count)
@@ -161,18 +164,20 @@ class DirectAssignmentPOS:
         assert np.any(self.transition_count > 0), "Negative transition count"
 
         # print("observation: ", self.observations[index])
-        # print("before decrement: ", self.token_state_matrix[self.observations[index][t]], self.hidden_states[index][t], self.K)
         self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
-        # print("after decrement: ", self.token_state_matrix[self.observations[index][t]])
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[index][t],
                                                                        self.transition_count, self.K,
                                                                        self.emission_pdf)
 
-        # print(posterior)
+        # print("posterior: ", index, t, posterior)
+
         if np.any(posterior < 0):
             print(posterior)
+            print(last_state, self.hidden_states[index][t], next_state)
+            print(self.transition_count)
+            print(index, t)
             raise ValueError("Probabilities in posterior must be greater than 0")
         if np.any(posterior > 1):
             raise ValueError("Probabilities in posterior must be smaller than 1")
@@ -196,7 +201,8 @@ class DirectAssignmentPOS:
 
         if np.any(self.transition_count < 0):
             print("index: ", index)
-            raise ValueError("Negative transition count -- ?")
+            print(self.transition_count)
+            raise ValueError("Negative transition count")
 
         self.transition_count[last_state, self.hidden_states[index][t]] += 1
         self.transition_count[self.hidden_states[index][t], next_state] += 1

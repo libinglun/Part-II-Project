@@ -3,10 +3,10 @@ import string
 class Lang:
     def __init__(self, name, dataset):
         self.name = name
-        self.token2index = {"UNK": 0}
-        self.index2token = {0: "UNK"}
-        self.nth_words = 1                     # Count UNK
-        self.token2count = {"UNK": 0}
+        self.token2index = {"SOS": 0, "UNK": 1}
+        self.index2token = {0: "SOS", 1: "UNK"}
+        self.nth_words = 2                      # Count UNK and SOS
+        self.token2count = {"SOS": 0, "UNK": 0}
         self.dataset = dataset                  # 3914 sentences in total for NLTK subset
         self.punctuations = set(string.punctuation)
 
@@ -15,9 +15,10 @@ class Lang:
         for sentence in self.dataset:
             filtered_sentence = [word_tag for word_tag in sentence if
                                  word_tag[0] not in self.punctuations and word_tag[1] != '-NONE-']
-            words, tags = zip(*filtered_sentence) if filtered_sentence else ([], [])
-            tokenized_sentences.append(list(words))
-            pos_tags.append(list(tags))
+            if filtered_sentence:
+                words, tags = zip(*filtered_sentence)
+                tokenized_sentences.append(['SOS'] + list(words))
+                pos_tags.append(['SOS_tag'] + list(tags))
         return tokenized_sentences, pos_tags
 
     def add_sentences(self, tokenized_sentences):
@@ -40,7 +41,6 @@ class Lang:
                 filtered_dict["UNK"] += count
 
         self.token2count = filtered_dict            # 5751 tokens after filter=2
-
 
     def create_indices(self):
         # self.token2count = dict(sorted(self.token2count.items(), key=lambda item: item[1]))
