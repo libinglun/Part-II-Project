@@ -116,7 +116,7 @@ if __name__ == "__main__":
     if args.mode == 'resume':
         if args.path is None:
             raise ValueError("Please specify the path of stored params!")
-        match = re.search(r'iter-(\d+)_result', args.path)
+        match = re.search(r'iter-(\d+)', args.path)
         prev_iters = int(match.group(1))
         load_path = file_path + args.path + ".npz"
         loaded_model = np.load(load_path, allow_pickle=True)
