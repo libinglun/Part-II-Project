@@ -3,26 +3,25 @@ from numpy.typing import NDArray
 
 CONST_EPS = 1e-6
 
+# change alpha_a_prior would change the distribution of posterior
+ALPHA_a_PRIOR = 1
+# change alpha_b_prior would change the number of states K
+ALPHA_b_PRIOR = 0.01
+
+GAMMA_a_PRIOR = 2
+GAMMA_b_PRIOR = 1
 
 class HDPHMM:
-    def __init__(self, alpha_a_prior=1, alpha_b_prior=0.01, gamma_a_prior=2, gamma_b_prior=1, rho0=0):
-        # TODO: change alpha_a_prior would change the distribution of posterior
-        self.alpha_a_prior = alpha_a_prior
-        # TODO: change alpha_b_prior would change the number of states K
-        self.alpha_b_prior = alpha_b_prior
-        # the reciprocal might be due to parameter specification -- need to double-check
-        self.alpha = np.random.gamma(alpha_a_prior, 1 / alpha_b_prior)
-
-        self.gamma_a_prior = gamma_a_prior
-        self.gamma_b_prior = gamma_b_prior
-        self.gamma = np.random.gamma(gamma_a_prior, 1 / gamma_b_prior)
+    def __init__(self,  alpha=None, gamma=None, beta=None, rho0=0):
+        self.alpha = alpha if alpha is not None else np.random.gamma(ALPHA_a_PRIOR, 1 / ALPHA_b_PRIOR)
+        self.gamma = gamma if gamma is not None else np.random.gamma(GAMMA_a_PRIOR, 1 / GAMMA_b_PRIOR)
 
         # the kappa parameter in direct assignment sampler
         self.rho = rho0
 
-        tmp = np.random.dirichlet(np.array([1, self.gamma]), size=1)[0]
-        self.beta_new = tmp[-1]
-        self.beta_vec = tmp[:-1]
+        beta_vec = beta if beta is not None else np.random.dirichlet(np.array([1, self.gamma]), size=1)[0]
+        self.beta_new = beta_vec[-1]
+        self.beta_vec = beta_vec[:-1]
 
     def hidden_states_posterior_with_last_state(self, last_state: int, observation, transition_count: NDArray, K: int,
                                                 emission_func):
@@ -92,6 +91,9 @@ class HDPHMM:
 
         tmp_vec = np.arange(K)
         # p(z_t = k|params)
+        # print(self.beta_vec.shape)
+        # print(transition_count.shape)
+        # print(tmp_vec.shape)
         current_hidden_state_dist = (
                 (self.alpha * self.beta_vec + transition_count[last_state] + self.rho * (last_state == tmp_vec))
                 / (self.alpha + transition_count[last_state].sum() + self.rho))
@@ -161,8 +163,8 @@ class HDPHMM:
 
         # minus 1 here is to offset the additional one added on m_mat[0, 0] ?
         # I added "- self.rho" to be consistent with Berkley's notes, but this is inconsistent with original codes.
-        self.alpha = np.random.gamma(self.alpha_a_prior + m_total_sum - 1 - sum(s_vec),
-                              1 / (self.alpha_b_prior - sum(np.log(r_vec + CONST_EPS))))
+        self.alpha = np.random.gamma(ALPHA_a_PRIOR + m_total_sum - 1 - sum(s_vec),
+                              1 / (ALPHA_b_PRIOR - sum(np.log(r_vec + CONST_EPS))))
 
     def update_gamma(self, m_total_sum, K):
         """
@@ -174,12 +176,12 @@ class HDPHMM:
         eta = np.random.beta(self.gamma + 1, m_total_sum)
 
         # indicator = np.random.binomial(1, m_total_sum / (m_total_sum + self.gamma))
-        indicator = (self.gamma_a_prior + K - 1) / (self.gamma_a_prior + K - 1 + m_total_sum * (self.gamma_b_prior - np.log(eta + CONST_EPS)))
+        indicator = (GAMMA_a_PRIOR + K - 1) / (GAMMA_a_PRIOR+ K - 1 + m_total_sum * (GAMMA_b_PRIOR - np.log(eta + CONST_EPS)))
 
         if indicator:
-            self.gamma = np.random.gamma(self.gamma_a_prior + K, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
+            self.gamma = np.random.gamma(GAMMA_a_PRIOR + K, 1 / (GAMMA_a_PRIOR - np.log(eta + CONST_EPS)))
         else:
-            self.gamma = np.random.gamma(self.gamma_a_prior + K - 1, 1 / (self.gamma_b_prior - np.log(eta + CONST_EPS)))
+            self.gamma = np.random.gamma(GAMMA_a_PRIOR + K - 1, 1 / (GAMMA_b_PRIOR - np.log(eta + CONST_EPS)))
 
         # alternative solution (still different from Zhou's implementation)
         # pi_m = (self.gamma_a_prior + K - 1) / (m_total_sum * (self.gamma_b_prior - np.log(eta + CONST_EPS)))

@@ -38,7 +38,7 @@ np.set_printoptions(formatter={'int': '{:5d}'.format})
 if __name__ == "__main__":
     if token_indices == [] or pos_tags == []:
         raise ValueError("Failed to load input!")
-    iterations = 20
+    iterations = 50
     model = HDPHMM()
     sampler = DirectAssignmentPOS(model, train_sentences, vocab_size)
 
