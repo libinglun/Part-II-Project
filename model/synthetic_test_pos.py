@@ -17,11 +17,19 @@ num_observations = 100
 def euclidean_distance(A, B):
     return np.sqrt(np.sum((A - B) ** 2))
 
+
+def kl_divergence(P, Q):
+    mask = (P != 0) & (Q != 0)
+    filtered_P = P[mask]
+    filtered_Q = Q[mask]
+    return np.sum(filtered_P * np.log(filtered_P / filtered_Q))
+
 def prepare_dataset():
     loaded_npz = np.load("../data/hmm_synthetic_dataset.npz", allow_pickle=True)
     observations = list(loaded_npz['observation'])
     real_hidden_states = list(loaded_npz['real_hidden'])
     noisy_hidden_states = list(loaded_npz['noisy_hidden'])
+    real_trans_dist = np.vstack(loaded_npz['real_trans'])
 
     size = 50000
 
@@ -35,15 +43,15 @@ def prepare_dataset():
             if t > 0:
                 noisy_trans_count[noisy_hidden_states[i][t - 1], noisy_hidden_states[i][t]] += 1
                 real_trans_count[real_hidden_states[i][t - 1], real_hidden_states[i][t]] += 1
-    print("real trans count: ", real_trans_count)
-    print("noisy trans count: ", noisy_trans_count)
+    print("real trans count: \n", real_trans_count)
+    print("noisy trans count: \n", noisy_trans_count)
     print(np.sum(noisy_trans_count))
     print(euclidean_distance(real_trans_count, noisy_trans_count))
 
-    return noisy_hidden_states, observations, noisy_trans_count, emis_count, real_trans_count
+    return noisy_hidden_states, observations, noisy_trans_count, emis_count, real_trans_count, real_trans_dist
     # print(emis_count)
 
-def train_sampler(hidden_states, observations, transition_count, emission_count, real_transition_count):
+def train_sampler(hidden_states, observations, transition_count, emission_count, real_transition_count, real_trans_dist):
     model = HDPHMM()
     sampler = DirectAssignmentPOS(model, observations, num_observations)
     sampler.K = 10
@@ -67,11 +75,17 @@ def train_sampler(hidden_states, observations, transition_count, emission_count,
         sampler.sample_beta()
         sampler.sample_alpha()
         sampler.sample_gamma()
-        print(f"iteration {iter} has transition counts {sampler.transition_count.sum()} in total: \n {sampler.transition_count}")
-        distance = euclidean_distance(sampler.transition_count[:10, :10], real_transition_count)
-        print(f"Distance between real transition counts is {distance}")
+        # print(f"iteration {iter} has transition counts {sampler.transition_count.sum()} in total: \n {sampler.transition_count}")
+        count_distance = euclidean_distance(sampler.transition_count[:10, :10], real_transition_count)
+        print(f"Distance between sampled and real transition counts is {count_distance}")
+
+        sampler.sample_transition_distribution()
+        trans_distance = euclidean_distance(sampler.pi_mat[:10, :10], real_trans_dist)
+        trans_KL_divergence = kl_divergence(sampler.pi_mat[:10, :10], real_trans_dist)
+        print(f"Distance between sampled and real transition distribution is {trans_distance}")
+        print(f"KL Divergence between sampled and real transition distribution is {trans_KL_divergence}")
 
 
 if __name__ == "__main__":
-    train_hidden, train_observed, noisy_trans_count, emis_count, real_trans_count = prepare_dataset()
-    train_sampler(train_hidden, train_observed, noisy_trans_count, emis_count, real_trans_count)
+    train_hidden, train_observed, noisy_trans_count, emis_count, real_trans_count, trans_dist = prepare_dataset()
+    train_sampler(train_hidden, train_observed, noisy_trans_count, emis_count, real_trans_count, trans_dist)
