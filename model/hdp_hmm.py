@@ -77,10 +77,11 @@ class HDPHMM:
 
         return hidden_states_posterior
 
-    def hidden_states_posterior(self, last_state: int, next_state: int, observation, transition_count: NDArray, K: int,
+    def hidden_states_posterior(self, last_state: int, next_state: int, observation, transition_count, emission_count, K: int,
                                 emission_func):
         """
         :param transition_count:transition_counts[i][j] number of transitions from state i to state j
+        :param emission_count:
         :param next_state: l
         :param last_state: j
         :param observation: current observation at step t (t is the index of direct assignment sampler)
@@ -118,6 +119,8 @@ class HDPHMM:
         # prob of yt[t] give the normal distribution, both yt_dist and yt_knew_dist are a single float
         observation_dist = emission_pdf(observation)
         if np.any(observation_dist < 0):
+            print(observation)
+            print(emission_count[observation])
             print(observation_dist)
             raise ValueError("Probabilities in emission must be greater than 0")
 

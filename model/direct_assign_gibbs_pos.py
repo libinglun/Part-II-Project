@@ -15,8 +15,8 @@ class DirectAssignmentPOS:
         # tokens are indices of word
         self.vocab_size = vocab_size
         # self.token2count = self.initialize_emission_matrix(dataset, self.vocab_size)
-        self.token_state_matrix = np.zeros((self.vocab_size, 1), dtype='int')
-        print(self.token_state_matrix.shape)
+        self.emission_count = np.zeros((self.vocab_size, 1), dtype='int')
+        print(self.emission_count.shape)
 
         self.model = model
         self.transition_count = np.zeros((self.K, self.K))  # (n_mat)
@@ -26,15 +26,15 @@ class DirectAssignmentPOS:
 
     def emission_pdf(self):
         # TODO: can have more complex smoothing -- introduce hyperparameter for the smoothing count
-        column_sums = self.token_state_matrix.sum(axis=0)       # axis = 0 -- column sums
-        fun1 = lambda x: (self.token_state_matrix[x] + 1) / (column_sums + self.vocab_size)
+        column_sums = self.emission_count.sum(axis=0)       # axis = 0 -- column sums
+        fun1 = lambda x: (self.emission_count[x] + 1) / (column_sums + self.vocab_size)
         fun2 = lambda x: 1 / self.vocab_size
         return fun1, fun2
 
     def initialise_first_state(self, index):
         tmp = np.arange(self.K) + 1
         self.hidden_states[index][0] = np.where(np.random.multinomial(1, np.random.dirichlet(tmp)))[0][0]
-        self.token_state_matrix[self.observations[index][0]][self.hidden_states[index][0]] += 1
+        self.emission_count[self.observations[index][0]][self.hidden_states[index][0]] += 1
         # if index <= 5:
         #     print("first state: ", self.hidden_states[index][0])
 
@@ -63,7 +63,7 @@ class DirectAssignmentPOS:
             self.transition_count = np.hstack((self.transition_count, np.zeros((self.K, 1))))
             self.transition_count = np.vstack((self.transition_count, np.zeros((1, self.K + 1))))
             # initialise a new column of token_state_matrix as a 0 vector
-            self.token_state_matrix = np.hstack((self.token_state_matrix, np.zeros((self.vocab_size, 1))))
+            self.emission_count = np.hstack((self.emission_count, np.zeros((self.vocab_size, 1))))
 
             # Add a new state
             self.K += 1
@@ -71,7 +71,7 @@ class DirectAssignmentPOS:
         # print("K:", self.K)
 
         self.transition_count[last_state, self.hidden_states[index][t]] += 1
-        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
+        self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] += 1
         # print(self.token_state_matrix.sum())
 
     def sample_hidden_states_on_next_state(self, index, t):
@@ -82,8 +82,8 @@ class DirectAssignmentPOS:
         self.transition_count[self.hidden_states[index][t], next_state] -= 1
         assert np.any(self.transition_count[self.hidden_states[index][t]] >= 0), f"Negative transition count, {index}"
 
-        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
-        assert np.any(self.token_state_matrix[self.observations[index][t]] >= 0), f"Negative emission count, {self.hidden_states[index]}, {index}"
+        self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] -= 1
+        assert np.any(self.emission_count[self.observations[index][t]] >= 0), f"Negative emission count, {self.hidden_states[index]}, {index}"
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior_with_next_state(next_state, self.observations[index][t],
@@ -101,7 +101,7 @@ class DirectAssignmentPOS:
         self.hidden_states[index][t] = np.where(np.random.multinomial(1, posterior))[0][0]
 
         self.transition_count[self.hidden_states[index][t], next_state] += 1
-        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
+        self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] += 1
 
 
     def sample_hidden_states_on_last_state(self, index, t):
@@ -112,10 +112,13 @@ class DirectAssignmentPOS:
         self.transition_count[last_state, self.hidden_states[index][t]] -= 1
         assert np.any(self.transition_count[self.hidden_states[index][t]] >= 0), "Negative transition count"
 
-        # print("before decrement: " , self.token_state_matrix[self.observations[t]], self.hidden_states[t])
-        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
-        assert np.any(self.token_state_matrix[self.observations[index][t]] >= 0), "Negative emission count"
-        # print("after decrement: ", self.token_state_matrix[self.observations[t]])
+        self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] -= 1
+        if np.any(self.emission_count[self.observations[index][t]] < 0):
+            print("index: ", index, "t: ", t)
+            print(self.emission_count[self.observations[index][t]])
+            print(self.hidden_states[index][t])
+            print(self.emission_count[self.observations[index][t]][self.hidden_states[index][t]])
+            raise ValueError("Negative emission count")
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[index][t],
@@ -140,12 +143,12 @@ class DirectAssignmentPOS:
             # Extend the transition matrix with the new state
             self.transition_count = np.hstack((self.transition_count, np.zeros((self.K, 1))))
             self.transition_count = np.vstack((self.transition_count, np.zeros((1, self.K + 1))))
-            self.token_state_matrix = np.hstack((self.token_state_matrix, np.zeros((self.vocab_size, 1))))
+            self.emission_count = np.hstack((self.emission_count, np.zeros((self.vocab_size, 1))))
 
             self.K += 1
 
         self.transition_count[last_state, self.hidden_states[index][t]] += 1
-        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
+        self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] += 1
 
     def sample_hidden_states_on_last_next_state(self, index, t):
         # define last_state(j), next_state(l)
@@ -158,17 +161,25 @@ class DirectAssignmentPOS:
             raise ValueError("Negative transition count")
 
         # exclude the counts of the current state
-        # print("transition count:", self.transition_count)
         self.transition_count[last_state, self.hidden_states[index][t]] -= 1
         self.transition_count[self.hidden_states[index][t], next_state] -= 1
-        assert np.any(self.transition_count > 0), "Negative transition count"
+        if np.any(self.transition_count < 0):
+            print("index: ", index)
+            print(self.transition_count)
+            raise ValueError("Negative transition count")
 
         # print("observation: ", self.observations[index])
-        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] -= 1
+        self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] -= 1
+        if np.any(self.emission_count[self.observations[index][t]] < 0):
+            print("index: ", index, "t: ", t)
+            print(self.emission_count[self.observations[index][t]])
+            print(self.hidden_states[index][t])
+            print(self.emission_count[self.observations[index][t]][self.hidden_states[index][t]])
+            raise ValueError("Negative emission count")
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[index][t],
-                                                                       self.transition_count, self.K,
+                                                                       self.transition_count, self.emission_count, self.K,
                                                                        self.emission_pdf)
 
         # print("posterior: ", index, t, posterior)
@@ -195,19 +206,14 @@ class DirectAssignmentPOS:
             # Extend the transition matrix with the new state
             self.transition_count = np.hstack((self.transition_count, np.zeros((self.K, 1))))
             self.transition_count = np.vstack((self.transition_count, np.zeros((1, self.K + 1))))
-            self.token_state_matrix = np.hstack((self.token_state_matrix, np.zeros((self.vocab_size, 1))))
+            self.emission_count = np.hstack((self.emission_count, np.zeros((self.vocab_size, 1))))
 
             self.K += 1
-
-        if np.any(self.transition_count < 0):
-            print("index: ", index)
-            print(self.transition_count)
-            raise ValueError("Negative transition count")
 
         self.transition_count[last_state, self.hidden_states[index][t]] += 1
         self.transition_count[self.hidden_states[index][t], next_state] += 1
         # print("before increment: ", self.token_state_matrix[self.observations[index][t]])
-        self.token_state_matrix[self.observations[index][t]][self.hidden_states[index][t]] += 1
+        self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] += 1
         # print("after increment: ", self.token_state_matrix[self.observations[index][t]])
 
     def update_K(self):
@@ -225,7 +231,7 @@ class DirectAssignmentPOS:
         self.transition_count = self.transition_count[remain_index][:, remain_index]
         # self.transition_count = self.transition_count[np.ix_(remain_index, remain_index)]
         # TODO: check token_state_matrix
-        self.token_state_matrix = self.token_state_matrix[:][:, remain_index]
+        self.emission_count = self.emission_count[:][:, remain_index]
         self.model.beta_vec = self.model.beta_vec[remain_index]
 
         # update the new state space
@@ -250,12 +256,12 @@ class DirectAssignmentPOS:
                 j = 0
                 # print("test_observations: ",test_observations[t])
                 # print("token_state_matrix: ", self.token_state_matrix[test_observations[t]])
-                a_mat[t + 1, j] = (self.token_state_matrix[test_observations[t]][j] + 1) / (self.token_state_matrix[test_observations[t]].sum() + self.K)
+                a_mat[t + 1, j] = (self.emission_count[test_observations[t]][j] + 1) / (self.emission_count[test_observations[t]].sum() + self.K)
             else:
                 # TODO: change range from K + 1 to K since delete one cluster as above
                 for j in range(self.K):
                     a_mat[t + 1, j] = (sum(a_mat[t, :] * self.pi_mat[:, j]) *
-                                       (self.token_state_matrix[test_observations[t]][j] + 1) / (self.token_state_matrix[test_observations[t]].sum() + self.K))
+                                       (self.emission_count[test_observations[t]][j] + 1) / (self.emission_count[test_observations[t]].sum() + self.K))
             c_vec[t] = sum(a_mat[t + 1, :])
             a_mat[t + 1, :] /= c_vec[t]
 

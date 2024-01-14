@@ -78,7 +78,7 @@ if __name__ == "__main__":
         # print(sampler.token_state_matrix.dtype)
         print("token_state_matrix:")
         for i in range(10, 20):
-            print(sampler.token_state_matrix[i].astype(int))
+            print(sampler.emission_count[i].astype(int))
 
         """
         if iteration % 10 == 0:
