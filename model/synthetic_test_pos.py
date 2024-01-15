@@ -18,7 +18,8 @@ file_path = "../data/"
 
 num_states = 20
 num_observations = 5000
-size = 100000
+size = 200000
+noisy_level = 0.3
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -38,13 +39,13 @@ def kl_divergence(P, Q):
     filtered_Q = Q[mask]
     return np.sum(filtered_P * np.log(filtered_P / filtered_Q))
 
-dataset_path = "../data/hmm_synthetic_dataset(noise-0.3).npz"
+dataset_path = f"../data/hmm_synthetic_dataset(noise-{noisy_level}_state-{num_states}_obs-{num_observations}_size-{size}).npz"
 loaded_npz = np.load(dataset_path, allow_pickle=True)
 observations = list(loaded_npz['observation'])
 real_hidden_states = list(loaded_npz['real_hidden'])
 noisy_hidden_states = list(loaded_npz['noisy_hidden'])
 real_trans_dist = np.vstack(loaded_npz['real_trans'])
-noisy_level = loaded_npz['noisy_level']
+# noisy_level = loaded_npz['noisy_level']
 
 real_trans_count = np.zeros((num_states, num_states), dtype='int')
 noisy_trans_count = np.zeros((num_states, num_states), dtype='int')
@@ -76,7 +77,7 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
             sampler.model.update_beta_with_new_state()
 
     iterations = iters
-    for iter in tqdm.tqdm(range(iterations), desc="training sampler:"):
+    for iter in tqdm.tqdm(range(iterations), desc="training sampler"):
         for index in range(len(observations)):
             for t in range(1, sampler.seq_length[index] - 1):
                 sampler.sample_hidden_states_on_last_next_state(index, t)

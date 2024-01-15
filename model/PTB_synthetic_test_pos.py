@@ -50,11 +50,11 @@ noisy_trans_count = np.zeros((num_states, num_states), dtype='int')
 emis_count = np.zeros((num_observations, num_states), dtype='int')
 
 for i in range(size):
-    for t in range(len(observations[i])):
+    for t in range(1, len(observations[i])):            # starts from 1 to bypass -1 at the beginning
         emis_count[observations[i][t], noisy_hidden_states[i][t]] += 1
-        if t > 0:
-            noisy_trans_count[noisy_hidden_states[i][t - 1], noisy_hidden_states[i][t]] += 1
-            real_trans_count[real_hidden_states[i][t - 1], real_hidden_states[i][t]] += 1
+
+        noisy_trans_count[noisy_hidden_states[i][t - 1], noisy_hidden_states[i][t]] += 1
+        real_trans_count[real_hidden_states[i][t - 1], real_hidden_states[i][t]] += 1
 print("real trans count: \n", real_trans_count)
 print("noisy trans count: \n", noisy_trans_count)
 print(np.sum(noisy_trans_count))
