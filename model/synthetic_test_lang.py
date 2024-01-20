@@ -34,7 +34,7 @@ def kl_divergence(P, Q):
     filtered_Q = Q[mask]
     return np.sum(filtered_P * np.log(filtered_P / filtered_Q))
 
-dataset_path = "../data/PennTreebank_synthetic_dataset(noise-0.3).npz"
+dataset_path = "../data/PennTreebank_synthetic_dataset(noise-0.8).npz"
 loaded_npz = np.load(dataset_path, allow_pickle=True)
 num_states = int(loaded_npz['num_states'])
 num_observations = int(loaded_npz['num_obs'])
@@ -60,8 +60,6 @@ print("noisy trans count: \n", noisy_trans_count)
 print(np.sum(noisy_trans_count))
 print(euclidean_distance(real_trans_count, noisy_trans_count))
 
-kl_divergence_result = []
-
 
 def train_sampler(iters, prev_iters, hidden_states, observations, transition_count, emission_count, real_transition_count, noisy_level, alpha=None, gamma=None, beta=None, K=num_states, mode='train'):
     model = HDPHMM(alpha, gamma, beta)
@@ -74,6 +72,17 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
         for i in range(num_states - 1):
             sampler.model.update_beta_with_new_state()
 
+    kl_divergence_result = []
+    alpha_result = []
+    gamma_result = []
+    best_distance = 1e9
+    best_alpha, best_gamma = None, None
+    best_beta = None
+    best_trans_dist = None
+    best_emission_count = None
+    sampled_trans_dist = None
+    sampled_emis_dist = None
+
     iterations = iters
     for iter in tqdm.tqdm(range(iterations), desc="training sampler:"):
         for index in range(len(observations)):
@@ -82,25 +91,28 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
 
         sampler.update_K()
-        # print("hidden states after update K:", sampler.hidden_states[:5])
         print("new K: ", sampler.K)
         sampler.sample_m()
         sampler.sample_beta()
         sampler.sample_alpha()
+        alpha_result.append(alpha)
         sampler.sample_gamma()
+        gamma_result.append(gamma)
         # print(f"iteration {iter} has transition counts {sampler.transition_count.sum()} in total: \n {sampler.transition_count}")
         count_distance = euclidean_distance(sampler.transition_count[:num_states, :num_states], real_transition_count)
+        trans_KL_divergence = kl_divergence(sampler.transition_count[:num_states, :num_states], real_transition_count)
         print(f"Distance between sampled and real transition counts is {count_distance}")
-        kl_divergence_result.append(count_distance)
+        print(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
+        kl_divergence_result.append((count_distance, trans_KL_divergence))
         print(sampler.transition_count)
 
-        # sampler.sample_transition_distribution()
-        # trans_distance = euclidean_distance(sampler.pi_mat[:10, :10], real_trans_dist)
-        # trans_KL_divergence = kl_divergence(sampler.pi_mat[:10, :10], real_trans_dist)
-        # print(f"Distance between sampled and real transition distribution is {trans_distance}")
-        # print(f"KL Divergence between sampled and real transition distribution is {trans_KL_divergence}")
-        #
-        # kl_divergence_result.append(trans_KL_divergence)
+        if count_distance < best_distance:
+            sampled_trans_dist = sampler.sample_transition_distribution()
+            sampled_emis_dist = sampler.calculate_emission_distribution()
+            beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1, )))
+            best_alpha = sampler.model.alpha
+            best_beta = beta
+            best_gamma = sampler.model.gamma
 
 
         if iter == iterations - 1:
@@ -108,9 +120,15 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
             hidden_states_object = np.array(sampler.hidden_states, dtype=object)
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1,)))
             timestamp = time.strftime("%m%d_%H%M%S", time.gmtime(time.time()))
-            np.savez(file_path + f"ptb-noise-{noisy_level}_iter-{iterations+prev_iters}_timestamp-{timestamp}_result.npz", observation=observation_object, K=sampler.K,
+            np.savez(file_path + f"ptb-noise-{noisy_level}_iter-{iterations+prev_iters}_timestamp-{timestamp}_result.npz",
+                     observation=observation_object, K=sampler.K,
                      hidden_state=hidden_states_object, trans_count=sampler.transition_count, emis_count=sampler.emission_count,
-                     alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta, result=np.array(kl_divergence_result))
+                     alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta, result=np.array(kl_divergence_result),
+                     hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)
+            np.savez(
+                file_path + f"ptb-noise-{noisy_level}_iter-{iterations + prev_iters}_timestamp-{timestamp}_best_params.npz",
+                trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=sampler.K,
+                alpha=best_alpha, gamma=best_gamma, beta=best_beta)
 
 
 if __name__ == "__main__":

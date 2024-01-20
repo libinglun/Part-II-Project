@@ -324,3 +324,10 @@ class DirectAssignmentPOS:
             (self.model.alpha * self.model.beta_vec, self.model.alpha * self.model.beta_new + self.model.rho))
         prob_vec[prob_vec < 0.01] = 0.01  # clip step
         self.pi_mat[-1] = np.random.dirichlet(prob_vec, size=1)[0]
+        return self.pi_mat
+
+    def calculate_emission_distribution(self):
+        column_sums = np.sum(self.emission_count, axis=0)
+        emis_dist = self.emission_count / column_sums
+        assert np.all(emis_dist == 1.0)
+        return emis_dist
