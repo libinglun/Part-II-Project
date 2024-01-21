@@ -329,5 +329,7 @@ class DirectAssignmentPOS:
     def calculate_emission_distribution(self):
         column_sums = np.sum(self.emission_count, axis=0)
         emis_dist = self.emission_count / column_sums
-        assert np.all(emis_dist == 1.0)
+        new_column_sums = np.sum(emis_dist, axis=0)
+        # print(new_column_sums)
+        assert np.all(np.isclose(new_column_sums, 1.0, atol=1e-6))
         return emis_dist

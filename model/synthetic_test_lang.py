@@ -15,6 +15,7 @@ np.set_printoptions(linewidth=180)
 np.set_printoptions(formatter={'int': '{:5d}'.format})
 
 file_path = "../data/"
+save_path = "../result/"
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -25,10 +26,15 @@ def parse_args():
 
 
 def euclidean_distance(A, B):
+    assert A.shape == B.shape, "two matrices should have the same shape"
     return np.sqrt(np.sum((A - B) ** 2))
 
+def difference(A, B):
+    assert A.shape == B.shape, "two matrices should have the same shape"
+    return np.sum(A != B)
 
 def kl_divergence(P, Q):
+    assert P.shape == Q.shape, "two matrices should have the same shape"
     mask = (P != 0) & (Q != 0)
     filtered_P = P[mask]
     filtered_Q = Q[mask]
@@ -73,13 +79,12 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
             sampler.model.update_beta_with_new_state()
 
     kl_divergence_result = []
+    K_result = []
     alpha_result = []
     gamma_result = []
     best_distance = 1e9
     best_alpha, best_gamma = None, None
     best_beta = None
-    best_trans_dist = None
-    best_emission_count = None
     sampled_trans_dist = None
     sampled_emis_dist = None
 
@@ -92,6 +97,8 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
 
         sampler.update_K()
         print("new K: ", sampler.K)
+        K_result.append(sampler.K)
+
         sampler.sample_m()
         sampler.sample_beta()
         sampler.sample_alpha()
@@ -103,10 +110,15 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
         trans_KL_divergence = kl_divergence(sampler.transition_count[:num_states, :num_states], real_transition_count)
         print(f"Distance between sampled and real transition counts is {count_distance}")
         print(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
-        kl_divergence_result.append((count_distance, trans_KL_divergence))
+
+        mis_states = difference(sampler.hidden_states, np.array(real_hidden_states))
+        print(f"Total number of wrong hidden states is {mis_states}")
+
+        kl_divergence_result.append((count_distance, trans_KL_divergence, mis_states))
         print(sampler.transition_count)
 
         if count_distance < best_distance:
+            best_distance = count_distance
             sampled_trans_dist = sampler.sample_transition_distribution()
             sampled_emis_dist = sampler.calculate_emission_distribution()
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1, )))
@@ -120,15 +132,15 @@ def train_sampler(iters, prev_iters, hidden_states, observations, transition_cou
             hidden_states_object = np.array(sampler.hidden_states, dtype=object)
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1,)))
             timestamp = time.strftime("%m%d_%H%M%S", time.gmtime(time.time()))
-            np.savez(file_path + f"ptb-noise-{noisy_level}_iter-{iterations+prev_iters}_timestamp-{timestamp}_result.npz",
+            np.savez(save_path + f"ptb-noise-{noisy_level}_iter-{iterations+prev_iters}_timestamp-{timestamp}_state.npz",
                      observation=observation_object, K=sampler.K,
                      hidden_state=hidden_states_object, trans_count=sampler.transition_count, emis_count=sampler.emission_count,
-                     alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta, result=np.array(kl_divergence_result),
-                     hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)
+                     alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta)
             np.savez(
-                file_path + f"ptb-noise-{noisy_level}_iter-{iterations + prev_iters}_timestamp-{timestamp}_best_params.npz",
-                trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=sampler.K,
-                alpha=best_alpha, gamma=best_gamma, beta=best_beta)
+                save_path + f"ptb-noise-{noisy_level}_iter-{iterations+prev_iters}_timestamp-{timestamp}_result.npz",
+                trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=K_result,
+                alpha=best_alpha, gamma=best_gamma, beta=best_beta, result=np.array(kl_divergence_result),
+                     hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)
 
 
 if __name__ == "__main__":
