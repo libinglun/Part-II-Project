@@ -5,7 +5,7 @@ import tqdm
 from model.hdp_hmm import HDPHMM
 from model.direct_assign_gibbs_pos import DirectAssignmentPOS
 from sklearn.model_selection import train_test_split
-from utils import compute_cost
+from utils.utils import compute_cost
 import nltk
 from nltk.corpus import treebank
 from NLTK_treebank import Lang

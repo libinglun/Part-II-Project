@@ -1,7 +1,0 @@
-LOAD_PATH = "../data/"
-SAVE_PATH = "../result/"
-
-NUM_STATES = 10
-NUM_OBS = 500
-SIZE = 50000
-NOISE_LEVEL = 0.5

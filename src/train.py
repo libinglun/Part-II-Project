@@ -2,7 +2,7 @@ import numpy as np
 import tqdm
 from model.hdp_hmm import HDPHMM
 from model.direct_assign_gibbs_gaussian import DirectAssignmentGaussian
-from utils import compute_cost
+from utils.utils import compute_cost
 
 
 seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]

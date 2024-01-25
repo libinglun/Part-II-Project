@@ -5,7 +5,7 @@ import time
 import re
 
 from model import HDPHMM, DirectAssignmentPOS
-from utils import euclidean_distance, difference, kl_divergence
+from utils.utils import euclidean_distance, difference, kl_divergence
 
 seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
 seed = 0  # random seed

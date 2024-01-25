@@ -5,7 +5,7 @@ import time
 import re
 
 from model import HDPHMM, DirectAssignmentPOS
-from utils import euclidean_distance, difference, kl_divergence
+from utils.utils import euclidean_distance, difference, kl_divergence
 
 seed_vec = [111, 222, 333, 444, 555, 666, 777, 888, 999, 1000]
 seed = 0  # random seed
@@ -15,8 +15,8 @@ np.set_printoptions(suppress=True, precision=4)
 np.set_printoptions(linewidth=180)
 np.set_printoptions(formatter={'int': '{:5d}'.format})
 
-file_path = "../data/"
-save_path = "../result/"
+file_path = "../../data/"
+save_path = "../../result/"
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -26,7 +26,7 @@ def parse_args():
     return args.parse_args()
 
 
-dataset_path = "../data/Childes_synthetic_dataset(noise-0.8).npz"
+dataset_path = "../../data/Childes_synthetic_dataset(noise-0.8).npz"
 loaded_npz = np.load(dataset_path, allow_pickle=True)
 num_states = int(loaded_npz['num_states'])
 num_observations = int(loaded_npz['num_obs'])

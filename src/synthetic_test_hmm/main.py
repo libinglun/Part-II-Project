@@ -4,7 +4,8 @@ import numpy as np
 from .data_loader import load_data, Dataset
 from .trainer import train_sampler
 from model import HDPHMM, DirectAssignmentPOS
-from const import NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE, SAVE_PATH
+from utils.const import NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE, SAVE_PATH
+from logger import mylogger
 
 
 def train_mode(args):
@@ -48,6 +49,8 @@ def resume_mode(args):
 
 
 def run(args):
+    mylogger.info("Start Training...")
+    mylogger.info(f"Noise Level: {NOISE_LEVEL}, Number of States: {NUM_STATES}, Number of Observations: {NUM_OBS}, Dataset Size: {SIZE}")
     if args.mode == 'train':
         train_mode(args)
     elif args.mode == 'resume':

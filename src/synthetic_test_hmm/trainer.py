@@ -2,8 +2,8 @@ import tqdm
 import time
 import numpy as np
 
-from utils import euclidean_distance, kl_divergence, difference
-from const import SAVE_PATH, NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE
+from utils.utils import euclidean_distance, kl_divergence, difference
+from utils.const import SAVE_PATH, NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE
 
 def train_sampler(sampler, iters, dataset, prev_iters=0):
 

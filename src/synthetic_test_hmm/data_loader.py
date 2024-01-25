@@ -1,7 +1,9 @@
 import numpy as np
 
-from utils import euclidean_distance, difference
-from const import LOAD_PATH
+from utils.utils import euclidean_distance, difference
+from utils.const import LOAD_PATH
+
+from logger import mylogger
 
 class Dataset:
     def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, emis_count, total_count):
@@ -34,14 +36,17 @@ def load_data(noisy_level, num_states, num_observations, size):
             if t > 0:
                 noisy_trans_count[noisy_hidden_states[i][t - 1], noisy_hidden_states[i][t]] += 1
                 real_trans_count[real_hidden_states[i][t - 1], real_hidden_states[i][t]] += 1
-    print("real trans count: \n", real_trans_count)
-    print("noisy trans count: \n", noisy_trans_count)
+
+    mylogger.info(f"real trans count: \n {np.array2string(real_trans_count)}")
+    # print("real trans count: \n", real_trans_count)
+    mylogger.info(f"noisy trans count: \n {np.array2string(noisy_trans_count)}")
+    # print("noisy trans count: \n", noisy_trans_count)
     total_count = np.sum(noisy_trans_count)
-    print(total_count)
+    mylogger.info(f"total transition counts: {str(total_count)}")
+    # print(total_count)
     mis, tot = difference(real_hidden_states, noisy_hidden_states)
-    print(f"The initial rate of missing states is:  {round(mis / tot * 100, 3)}%")
-    # print(noisy_hidden_states[:3])
-    # print(real_hidden_states[:3])
-    print(euclidean_distance(real_trans_count, noisy_trans_count))
+    mylogger.info(f"The initial rate of missing states is:  {str(round(mis / tot * 100, 3))}%")
+    mylogger.info(f"Initial Euclidean Distance: {euclidean_distance(real_trans_count, noisy_trans_count)}")
+    # print(euclidean_distance(real_trans_count, noisy_trans_count))
 
     return Dataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, emis_count, total_count)

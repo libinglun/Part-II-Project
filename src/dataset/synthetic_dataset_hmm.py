@@ -2,7 +2,7 @@ import numpy as np
 import argparse
 import tqdm
 
-from const import LOAD_PATH
+from utils.const import LOAD_PATH
 
 def create_hmm_dataset(noisy_level, num_states, num_obs, size):
     def simulate_hmm(num_sequences, min_length, max_length, start_prob, trans_prob, emis_prob):
