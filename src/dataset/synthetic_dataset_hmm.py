@@ -1,6 +1,8 @@
 import numpy as np
+import argparse
 import tqdm
 
+from const import LOAD_PATH
 
 def create_hmm_dataset(noisy_level, num_states, num_obs, size):
     def simulate_hmm(num_sequences, min_length, max_length, start_prob, trans_prob, emis_prob):
@@ -52,7 +54,7 @@ def create_hmm_dataset(noisy_level, num_states, num_obs, size):
 
     noisy_hidden_states = add_noise_to_states(syn_hidden_states, num_states, flip_prob=noisy_level)
 
-    file_path = f"../../data/hmm_synthetic_dataset(noise-{noisy_level}_state-{num_states}_obs-{num_obs}_size-{size}).npz"
+    file_path = LOAD_PATH + f"hmm_synthetic_dataset(noise-{noisy_level}_state-{num_states}_obs-{num_obs}_size-{size}).npz"
     seq_object = np.array(syn_sequences, dtype=object)
     hid_object = np.array(syn_hidden_states, dtype=object)
     noisy_hid_object = np.array(noisy_hidden_states, dtype=object)
@@ -61,3 +63,15 @@ def create_hmm_dataset(noisy_level, num_states, num_obs, size):
     np.savez(file_path, observation=seq_object, real_hidden=hid_object, noisy_hidden=noisy_hid_object,
              real_trans=trans_object, emis=emis_object, noisy_level=noisy_level)
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-noise', type=float, default=0.5)
+    parser.add_argument('-states', type=int, default=10)
+    parser.add_argument('-obs', type=int, default=500)
+    parser.add_argument('-size', type=int, default=50000)
+
+    args = parser.parse_args()
+    create_hmm_dataset(args.noise, args.states, args.obs, args.size)
+
+if __name__ == "__main__":
+    main()
