@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.stats as stats
-from model.direct_assign_gibbs_base import DirectAssignment
+from .direct_assign_gibbs_base import DirectAssignment
 
 
 class DirectAssignmentGaussian(DirectAssignment):

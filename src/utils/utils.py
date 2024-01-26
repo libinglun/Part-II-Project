@@ -41,3 +41,8 @@ def kl_divergence(P, Q):
     filtered_P = P[mask]
     filtered_Q = Q[mask]
     return np.sum(filtered_P * np.log(filtered_P / filtered_Q))
+
+def set_print_options():
+    np.set_printoptions(suppress=True, precision=4)
+    np.set_printoptions(linewidth=180)
+    np.set_printoptions(formatter={'int': '{:5d}'.format})

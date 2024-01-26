@@ -2,10 +2,12 @@ import tqdm
 import time
 import numpy as np
 
-from utils.utils import euclidean_distance, kl_divergence, difference
-from utils.const import SAVE_PATH, NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE
+from ..utils.utils import euclidean_distance, kl_divergence, difference
+from ..utils.const import SAVE_PATH
 
-def train_sampler(sampler, iters, dataset, prev_iters=0):
+from ..logger import mylogger
+
+def train_sampler(sampler, args, dataset, prev_iters=0):
 
     best_score = 100
     sampled_trans_dist = None
@@ -15,7 +17,7 @@ def train_sampler(sampler, iters, dataset, prev_iters=0):
     alpha_result = []
     gamma_result = []
 
-    iterations = iters
+    iterations = args.iter
     for iter in tqdm.tqdm(range(iterations), desc="training model"):
         for index in range(len(dataset.observations)):
             for t in range(1, sampler.seq_length[index] - 1):
@@ -23,8 +25,8 @@ def train_sampler(sampler, iters, dataset, prev_iters=0):
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
 
         sampler.update_K()
-        # print("hidden states after update K:", model.hidden_states[:5])
-        print("new K: ", sampler.K)
+        # print("new K: ", sampler.K)
+        mylogger.info(f"new K: {sampler.K}")
         K_result.append(sampler.K)
 
         sampler.sample_m()
@@ -34,21 +36,25 @@ def train_sampler(sampler, iters, dataset, prev_iters=0):
         sampler.sample_gamma()
         gamma_result.append(sampler.model.gamma)
         # print(f"iteration {iter} has transition counts {model.transition_count.sum()} in total: \n {model.transition_count}")
-        count_distance = euclidean_distance(sampler.transition_count[:NUM_STATES, :NUM_STATES], dataset.real_trans_count)
+        count_distance = euclidean_distance(sampler.transition_count[:args.states, :args.states], dataset.real_trans_count)
+        mylogger.info(f"Distance between sampled and real transition counts is {count_distance}")
         print(f"Distance between sampled and real transition counts is {count_distance}")
 
         trans_dist = sampler.sample_transition_distribution()
-        trans_distance = euclidean_distance(trans_dist[:NUM_STATES, :NUM_STATES], dataset.real_trans_dist)
-        trans_KL_divergence = kl_divergence(trans_dist[:NUM_STATES, :NUM_STATES], dataset.real_trans_dist)
+        trans_distance = euclidean_distance(trans_dist[:args.states, :args.states], dataset.real_trans_dist)
+        trans_KL_divergence = kl_divergence(trans_dist[:args.states, :args.states], dataset.real_trans_dist)
+        mylogger.info(f"Distance between sampled and real transition distribution is {trans_distance}")
+        mylogger.info(f"KL Divergence between sampled and real transition distribution is {trans_KL_divergence}")
         print(f"Distance between sampled and real transition distribution is {trans_distance}")
         print(f"KL Divergence between sampled and real transition distribution is {trans_KL_divergence}")
 
         mis_states, total_states = difference(sampler.hidden_states, dataset.real_hidden_states)
-        print(mis_states, total_states)
+        # print(mis_states, total_states)
+        mylogger.info(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
         print(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
 
-        print(sampler.hidden_states[:3])
-        print(dataset.real_hidden_states[:3])
+        # print(sampler.hidden_states[:3])
+        # print(dataset.real_hidden_states[:3])
 
         kl_divergence_result.append((count_distance, trans_KL_divergence, mis_states))
 
@@ -62,11 +68,11 @@ def train_sampler(sampler, iters, dataset, prev_iters=0):
             hidden_states_object = np.array(sampler.hidden_states, dtype=object)
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1,)))
             timestamp = time.strftime("%m%d_%H%M%S", time.gmtime(time.time()))
-            np.savez(SAVE_PATH + f"noise-{NOISE_LEVEL}_iter-{iterations + prev_iters}_state-{NUM_STATES}_obs-{NUM_OBS}_size-{SIZE}_timestamp-{timestamp}_state.npz",
+            np.savez(SAVE_PATH + f"noise-{args.noise}_iter-{iterations + prev_iters}_state-{args.states}_obs-{args.obs}_size-{args.size}_timestamp-{timestamp}_state.npz",
                      observation=observation_object, K=sampler.K,
                      hidden_state=hidden_states_object, trans_count=sampler.transition_count, emis_count=sampler.emission_count,
                      alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta)
             np.savez(
-                SAVE_PATH + f"noise-{NOISE_LEVEL}_iter-{iterations + prev_iters}_state-{NUM_STATES}_obs-{NUM_OBS}_size-{SIZE}_timestamp-{timestamp}_result.npz",
+                SAVE_PATH + f"noise-{args.noise}_iter-{iterations + prev_iters}_state-{args.states}_obs-{args.obs}_size-{args.size}_timestamp-{timestamp}_result.npz",
                 trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=K_result, result=np.array(kl_divergence_result),
                 hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)

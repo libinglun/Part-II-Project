@@ -1,6 +1,6 @@
 import sys
 
-PROJ_PATH = "/Users/binglunli/Desktop/Uni_Cam/Part II/Project/Implementation/Part-II-Project/"
+PROJ_PATH = "/Users/binglunli/Desktop/Uni_Cam/Part II/Project/Implementation/Part_II_Project/"
 
 LOAD_PATH = PROJ_PATH + "data/"
 SAVE_PATH = PROJ_PATH + "result/"

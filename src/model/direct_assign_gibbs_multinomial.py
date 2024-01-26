@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.special as ssp
-from model.direct_assign_gibbs_base import DirectAssignment
+from .direct_assign_gibbs_base import DirectAssignment
 
 
 class DirectAssignmentMultinomial(DirectAssignment):

@@ -1,9 +1,9 @@
 import numpy as np
 
-from utils.utils import euclidean_distance, difference
-from utils.const import LOAD_PATH
+from ..utils.utils import euclidean_distance, difference
+from ..utils.const import LOAD_PATH
 
-from logger import mylogger
+from ..logger import mylogger
 
 class Dataset:
     def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, emis_count, total_count):

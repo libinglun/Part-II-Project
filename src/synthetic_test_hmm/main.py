@@ -1,28 +1,33 @@
 import re
 import numpy as np
+import os
 
 from .data_loader import load_data, Dataset
 from .trainer import train_sampler
-from model import HDPHMM, DirectAssignmentPOS
-from utils.const import NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE, SAVE_PATH
-from logger import mylogger
 
+from ..model import HDPHMM, DirectAssignmentPOS
+from ..dataset import create_hmm_dataset
+from ..utils.const import SAVE_PATH, LOAD_PATH
+from ..utils.utils import set_print_options
+from ..logger import mylogger
+
+set_print_options()
 
 def train_mode(args):
     model = HDPHMM()
-    dataset: Dataset = load_data(NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE)
+    dataset: Dataset = load_data(args.noise, args.states, args.obs, args.size)
     sampler = DirectAssignmentPOS(
-        model, dataset.observations, NUM_OBS,
+        model, dataset.observations, args.obs,
         hidden_states=dataset.noisy_hidden_states,
         transition_count=dataset.noisy_trans_count,
         emission_count=dataset.emis_count,
-        K=NUM_STATES
+        K=args.states
     )
     # update beta_vec for train mode
-    for i in range(NUM_STATES - 1):
+    for i in range(args.states - 1):
         sampler.model.update_beta_with_new_state()
 
-    train_sampler(sampler, args.iter, dataset)
+    train_sampler(sampler, args, dataset)
 
 def resume_mode(args):
     if args.state is None:
@@ -41,16 +46,19 @@ def resume_mode(args):
     beta = np.array(loaded_model['beta'])
 
     model = HDPHMM(alpha, gamma, beta)
-    sampler = DirectAssignmentPOS(model, observations, NUM_OBS, hidden_states=hidden_states, emission_count=emis_count, transition_count=trans_count, K=K)
+    sampler = DirectAssignmentPOS(model, observations, args.obs, hidden_states=hidden_states, emission_count=emis_count, transition_count=trans_count, K=K)
 
-    dataset: Dataset = load_data(NOISE_LEVEL, NUM_STATES, NUM_OBS, SIZE)
+    dataset: Dataset = load_data(args.noise, args.states, args.obs, args.size)
 
-    train_sampler(sampler, args.iter, dataset, prev_iters=prev_iters)
+    train_sampler(sampler, args, dataset, prev_iters=prev_iters)
 
 
 def run(args):
+    if not os.path.exists(LOAD_PATH + f"hmm_synthetic_dataset(noise-{args.noise}_state-{args.states}_obs-{args.obs}_size-{args.size}).npz"):
+        create_hmm_dataset(args.noise, args.states, args.obs, args.size)
+
     mylogger.info("Start Training...")
-    mylogger.info(f"Noise Level: {NOISE_LEVEL}, Number of States: {NUM_STATES}, Number of Observations: {NUM_OBS}, Dataset Size: {SIZE}")
+    mylogger.info(f"Noise Level: {args.noise}, Number of States: {args.states}, Number of Observations: {args.obs}, Dataset Size: {args.size}")
     if args.mode == 'train':
         train_mode(args)
     elif args.mode == 'resume':
