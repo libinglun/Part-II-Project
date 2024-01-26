@@ -47,4 +47,4 @@ def load_data(noisy_level, num_states, num_observations, size):
     mylogger.info(f"Initial Euclidean Distance: {euclidean_distance(real_trans_count, noisy_trans_count)}")
     # print(euclidean_distance(real_trans_count, noisy_trans_count))
 
-    return Dataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, noisy_emis_count, total_count)
+    return Dataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, noisy_emis_count)
