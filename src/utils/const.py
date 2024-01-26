@@ -1,6 +1,6 @@
-import sys
+import os
 
-PROJ_PATH = "/Users/binglunli/Desktop/Uni_Cam/Part II/Project/Implementation/Part_II_Project/"
+PROJ_PATH = os.getcwd()
 
 LOAD_PATH = PROJ_PATH + "data/"
 SAVE_PATH = PROJ_PATH + "result/"
