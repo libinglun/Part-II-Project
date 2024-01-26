@@ -5,6 +5,7 @@ import tqdm
 from ..utils.const import LOAD_PATH
 from ..logger import mylogger
 
+
 def create_hmm_dataset(noisy_level, num_states, num_obs, size):
     def simulate_hmm(num_sequences, min_length, max_length, start_prob, trans_prob, emis_prob):
         sequences = []
@@ -65,6 +66,7 @@ def create_hmm_dataset(noisy_level, num_states, num_obs, size):
              real_trans=trans_object, emis=emis_object, noisy_level=noisy_level)
     mylogger.info(f"Dataset with noise-{noisy_level}_state-{num_states}_obs-{num_obs}_size-{size} created...")
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-noise', type=float, default=0.5)
@@ -74,6 +76,7 @@ def main():
 
     args = parser.parse_args()
     create_hmm_dataset(args.noise, args.states, args.obs, args.size)
+
 
 if __name__ == "__main__":
     main()

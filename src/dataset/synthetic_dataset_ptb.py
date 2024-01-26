@@ -6,9 +6,10 @@ from collections import defaultdict
 from ..utils.const import LOAD_PATH
 from ..logger import mylogger
 
-def create_lang_dataset_ptb(noise_level):
 
+def create_lang_dataset_ptb(noise_level):
     print("Creating the PTB dataset ...")
+
     def read_sentences_with_pos_tags(path):
         sentences_with_pos_tags = []
 
@@ -21,7 +22,8 @@ def create_lang_dataset_ptb(noise_level):
                         word = fields[1].lower()  # Word form is the second field
                         upos = fields[3]  # Universal POS tag is the fourth field
                         xpos = fields[4]  # Language specific POS tag is the fifth field
-                        if upos not in ['NUM', 'PUNCT', 'INTJ','X']:  # Remove punctuation, interjection, and undefined pos tags
+                        if upos not in ['NUM', 'PUNCT', 'INTJ',
+                                        'X']:  # Remove punctuation, interjection, and undefined pos tags
                             current_sentence.append((word, upos, xpos))
 
                 # New sentence
@@ -116,8 +118,10 @@ def create_lang_dataset_ptb(noise_level):
 
     print("Adding noise to the PTB dataset ...")
 
-    noisy_hidden_states_universal = add_noise_to_states_ptb(hidden_states_universal, len(upos_to_index), flip_prob=noise_level)
-    noisy_hidden_states_specific = add_noise_to_states_ptb(hidden_states_specific, len(xpos_to_index), flip_prob=noise_level)
+    noisy_hidden_states_universal = add_noise_to_states_ptb(hidden_states_universal, len(upos_to_index),
+                                                            flip_prob=noise_level)
+    noisy_hidden_states_specific = add_noise_to_states_ptb(hidden_states_specific, len(xpos_to_index),
+                                                           flip_prob=noise_level)
 
     for i in range(len(hidden_states_universal)):
         hidden_states_universal[i].insert(0, 0)

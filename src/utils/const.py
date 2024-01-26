@@ -1,6 +1,6 @@
 import os
 
-PROJ_PATH = os.getcwd()
+PROJ_PATH = os.getcwd() + '/'
 
 LOAD_PATH = PROJ_PATH + "data/"
 SAVE_PATH = PROJ_PATH + "result/"
