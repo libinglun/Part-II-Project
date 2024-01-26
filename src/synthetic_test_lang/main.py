@@ -13,6 +13,7 @@ from ..logger import mylogger
 
 set_print_options()
 
+
 def train_mode(args):
     model = HDPHMM()
     dataset: LanguageDataset = load_data(args.name, args.noise)
@@ -28,6 +29,7 @@ def train_mode(args):
         sampler.model.update_beta_with_new_state()
 
     train_sampler(sampler, args, dataset)
+
 
 def resume_mode(args):
     if args.state is None:
@@ -46,7 +48,8 @@ def resume_mode(args):
     beta = np.array(loaded_model['beta'])
 
     model = HDPHMM(alpha, gamma, beta)
-    sampler = DirectAssignmentPOS(model, observations, args.obs, hidden_states=hidden_states, emission_count=emis_count, transition_count=trans_count, K=K)
+    sampler = DirectAssignmentPOS(model, observations, args.obs, hidden_states=hidden_states, emission_count=emis_count,
+                                  transition_count=trans_count, K=K)
 
     dataset: LanguageDataset = load_data(args.name, args.noise)
 
