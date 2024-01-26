@@ -19,7 +19,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
 
     iterations = args.iter
     for iter in tqdm.tqdm(range(iterations), desc="training model"):
-        for index in range(len(dataset.observations)):
+        for index in range(args.size):
             for t in range(1, sampler.seq_length[index] - 1):
                 sampler.sample_hidden_states_on_last_next_state(index, t)
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)

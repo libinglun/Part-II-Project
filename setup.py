@@ -18,6 +18,7 @@ setup(
     entry_points={
         'console_scripts': [
             'hmm-test=src.synthetic_test_hmm.run_hmm:main',
+            'lang-test=src.synthetic_test_lang.run_lang:main',
         ],
     },
 )

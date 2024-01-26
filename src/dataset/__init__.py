@@ -1,1 +1,3 @@
 from .synthetic_dataset_hmm import create_hmm_dataset
+from .synthetic_dataset_ptb import create_lang_dataset_ptb
+from .synthetic_dataset_childes import create_lang_dataset_childes

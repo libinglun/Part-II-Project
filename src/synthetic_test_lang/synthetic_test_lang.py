@@ -26,7 +26,7 @@ def parse_args():
     return args.parse_args()
 
 
-dataset_path = "../../data/Childes_synthetic_dataset(noise-0.8).npz"
+dataset_path = "../../data/PTB_synthetic_dataset(noise-0.4).npz"
 loaded_npz = np.load(dataset_path, allow_pickle=True)
 num_states = int(loaded_npz['num_states'])
 num_observations = int(loaded_npz['num_obs'])

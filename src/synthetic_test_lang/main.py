@@ -2,11 +2,11 @@ import re
 import numpy as np
 import os
 
-from .data_loader import load_data, Dataset
+from .data_loader import load_data, LanguageDataset
 from .trainer import train_sampler
 
 from ..model import HDPHMM, DirectAssignmentPOS
-from ..dataset import create_hmm_dataset
+from ..dataset import create_lang_dataset_ptb, create_lang_dataset_childes
 from ..utils.const import SAVE_PATH, LOAD_PATH
 from ..utils.utils import set_print_options
 from ..logger import mylogger
@@ -15,16 +15,16 @@ set_print_options()
 
 def train_mode(args):
     model = HDPHMM()
-    dataset: Dataset = load_data(args.noise, args.states, args.obs, args.size)
+    dataset: LanguageDataset = load_data(args.name, args.noise)
     sampler = DirectAssignmentPOS(
-        model, dataset.observations, args.obs,
+        model, dataset.observations, dataset.size,
         hidden_states=dataset.noisy_hidden_states,
         transition_count=dataset.noisy_trans_count,
         emission_count=dataset.noisy_emis_count,
-        K=args.states
+        K=dataset.num_states
     )
     # update beta_vec for train mode
-    for i in range(args.states - 1):
+    for i in range(dataset.num_states - 1):
         sampler.model.update_beta_with_new_state()
 
     train_sampler(sampler, args, dataset)
@@ -48,17 +48,19 @@ def resume_mode(args):
     model = HDPHMM(alpha, gamma, beta)
     sampler = DirectAssignmentPOS(model, observations, args.obs, hidden_states=hidden_states, emission_count=emis_count, transition_count=trans_count, K=K)
 
-    dataset: Dataset = load_data(args.noise, args.states, args.obs, args.size)
+    dataset: LanguageDataset = load_data(args.name, args.noise)
 
     train_sampler(sampler, args, dataset, prev_iters=prev_iters)
 
 
 def run(args):
-    if not os.path.exists(LOAD_PATH + f"hmm_synthetic_dataset(noise-{args.noise}_state-{args.states}_obs-{args.obs}_size-{args.size}).npz"):
-        create_hmm_dataset(args.noise, args.states, args.obs, args.size)
+    if not os.path.exists(LOAD_PATH + args.name + f"_synthetic_dataset(noise-{args.noise}).npz"):
+        if args.name == 'PTB':
+            create_lang_dataset_ptb(args.noise)
+        if args.name == 'Childes':
+            create_lang_dataset_childes(args.noise)
 
     mylogger.info("Start Training...")
-    mylogger.info(f"Noise Level: {args.noise}, Number of States: {args.states}, Number of Observations: {args.obs}, Dataset Size: {args.size}")
     if args.mode == 'train':
         train_mode(args)
     elif args.mode == 'resume':
