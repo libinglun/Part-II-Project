@@ -144,7 +144,7 @@ class DirectAssignmentPOS:
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[index][t],
-                                                                       self.transition_count, self.emission_count, self.K,
+                                                                       self.transition_count, self.K,
                                                                        self.emission_pdf)
 
         # print("posterior: ", index, t, posterior)
