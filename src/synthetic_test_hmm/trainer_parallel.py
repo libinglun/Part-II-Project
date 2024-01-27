@@ -1,6 +1,8 @@
 import tqdm
 import time
 import numpy as np
+import multiprocessing
+import os
 
 from ..utils.utils import euclidean_distance, kl_divergence, difference
 from ..utils.const import SAVE_PATH
@@ -8,7 +10,14 @@ from ..utils.const import SAVE_PATH
 from ..logger import mylogger
 
 
-def train_sampler(sampler, args, dataset, prev_iters=0):
+def process_index(sampler, index):
+    print(f"Processing index {index} in process ID: {os.getpid()}")
+    for t in range(1, sampler.seq_length[index] - 1):
+        sampler.sample_hidden_states_on_last_next_state(index, t)
+    sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
+
+
+def train_sampler_parallel(sampler, args, dataset, prev_iters=0):
     best_score = 100
     sampled_trans_dist = None
     sampled_emis_dist = None
@@ -18,14 +27,14 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     gamma_result = []
 
     iterations = args.iter
-    for iteration in tqdm.tqdm(range(iterations), desc="training model"):
-        for index in range(args.size):
-            for t in range(1, sampler.seq_length[index] - 1):
-                sampler.sample_hidden_states_on_last_next_state(index, t)
-            sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
+    pool = multiprocessing.Pool()
+    num_cores = multiprocessing.cpu_count()
+    print(f"Number of CPU cores: {num_cores}")
+
+    for iteration in tqdm.tqdm(range(iterations), desc="training model:"):
+        pool.map(process_index, [(sampler, index) for index in range(args.size)])
 
         sampler.update_K()
-        # print("new K: ", sampler.K)
         mylogger.info(f"new K: {sampler.K}")
         K_result.append(sampler.K)
 
@@ -36,7 +45,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         sampler.sample_gamma()
         gamma_result.append(sampler.model.gamma)
         # print(f"iteration {iter} has transition counts {model.transition_count.sum()} in total: \n {model.transition_count}")
-        count_distance = euclidean_distance(sampler.transition_count[:args.states, :args.states], dataset.real_trans_count)
+        count_distance = euclidean_distance(sampler.transition_count[:args.states, :args.states],
+                                            dataset.real_trans_count)
         mylogger.info(f"Distance between sampled and real transition counts is {count_distance}")
         print(f"Distance between sampled and real transition counts is {count_distance}")
 
@@ -72,8 +82,13 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
                 SAVE_PATH + f"noise-{args.noise}_iter-{iterations + prev_iters}_state-{args.states}_obs-{args.obs}_size-{args.size}_timestamp-{timestamp}_state.npz",
                 observation=observation_object, K=sampler.K,
                 hidden_state=hidden_states_object, trans_count=sampler.transition_count,
-                emis_count=sampler.emission_count, alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta)
+                emis_count=sampler.emission_count,
+                alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta)
             np.savez(
                 SAVE_PATH + f"noise-{args.noise}_iter-{iterations + prev_iters}_state-{args.states}_obs-{args.obs}_size-{args.size}_timestamp-{timestamp}_result.npz",
                 trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=K_result,
-                result=np.array(kl_divergence_result), hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)
+                result=np.array(kl_divergence_result),
+                hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)
+
+    pool.close()
+    pool.join()

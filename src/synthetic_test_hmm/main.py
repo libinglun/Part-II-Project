@@ -13,6 +13,7 @@ from ..logger import mylogger
 
 set_print_options()
 
+
 def train_mode(args):
     model = HDPHMM()
     dataset: Dataset = load_data(args.noise, args.states, args.obs, args.size)
@@ -28,6 +29,7 @@ def train_mode(args):
         sampler.model.update_beta_with_new_state()
 
     train_sampler(sampler, args, dataset)
+
 
 def resume_mode(args):
     if args.state is None:

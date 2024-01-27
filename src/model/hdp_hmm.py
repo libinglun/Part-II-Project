@@ -77,7 +77,7 @@ class HDPHMM:
 
         return hidden_states_posterior
 
-    def hidden_states_posterior(self, last_state: int, next_state: int, observation, transition_count, emission_count, K: int,
+    def hidden_states_posterior(self, last_state: int, next_state: int, observation, transition_count, K: int,
                                 emission_func):
         """
         :param transition_count:transition_counts[i][j] number of transitions from state i to state j
@@ -120,7 +120,6 @@ class HDPHMM:
         observation_dist = emission_pdf(observation)
         if np.any(observation_dist < 0):
             print(observation)
-            print(emission_count[observation])
             print(observation_dist)
             raise ValueError("Probabilities in emission must be greater than 0")
 

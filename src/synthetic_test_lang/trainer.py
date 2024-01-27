@@ -20,7 +20,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     best_beta = None
 
     iterations = args.iter
-    for iter in tqdm.tqdm(range(iterations), desc="training model:"):
+    for iteration in tqdm.tqdm(range(iterations), desc="training model:"):
         for index in range(dataset.size):
             for t in range(1, sampler.seq_length[index] - 1):
                 sampler.sample_hidden_states_on_last_next_state(index, t)
@@ -62,7 +62,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
             best_beta = beta
             best_gamma = sampler.model.gamma
 
-        if iter == iterations - 1:
+        if iteration == iterations - 1:
             observation_object = np.array(dataset.observations, dtype=object)
             hidden_states_object = np.array(sampler.hidden_states, dtype=object)
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1, )))

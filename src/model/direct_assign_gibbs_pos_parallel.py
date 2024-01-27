@@ -1,32 +1,42 @@
 import numpy as np
+import multiprocessing
+from multiprocessing import Manager
 
 
-class DirectAssignmentPOS:
-    def __init__(self, model, observations, vocab_size, hidden_states=None, transition_count=None, emission_count=None, K=1):
+class DirectAssignmentPOSParallel:
+    def __init__(self, model, observations, vocab_size, hidden_states=None, transition_count=None, emission_count=None,
+                 K=1):
         # observations are all observation of training set
         self.observations = observations
         self.dataset_length = len(observations)
         # a list of sequence_length
         self.seq_length = [len(obs) for obs in self.observations]
         # matrix of number of sequence * sequence_length
-        self.hidden_states = hidden_states.copy() if hidden_states is not None else [np.zeros(seq_len, dtype='int') for seq_len in self.seq_length]
-        self.K = K
+        self.hidden_states = hidden_states.copy() if hidden_states is not None else [np.zeros(seq_len, dtype='int') for
+                                                                                     seq_len in self.seq_length]
 
-        # tokens are indices of word
         self.vocab_size = vocab_size
-        # self.token2count = self.initialize_emission_matrix(dataset, self.vocab_size)
-        self.emission_count = emission_count.copy() if emission_count is not None else np.zeros((self.vocab_size, 1), dtype='int')
-        print(self.emission_count.shape)
+
+        self.manager = Manager()
+        self.transition_count = self.manager.list(
+            transition_count.tolist() if transition_count is not None else np.zeros((self.vocab_size, 1),
+                                                                                    dtype='int').tolist())
+        self.emission_count = self.manager.list(
+            emission_count.tolist() if emission_count is not None else np.zeros((self.K, self.K)).tolist())
+        self.K = self.manager.Value('i', K)  # 'i' for integer type
+
+        # print(self.emission_count.shape)
 
         self.model = model
-        self.transition_count = transition_count.copy() if transition_count is not None else np.zeros((self.K, self.K))  # (n_mat)
+
         self.m_mat = None
         self.pi_mat = None
 
     def emission_pdf(self):
         # TODO: can have more complex smoothing -- introduce hyperparameter for the smoothing count
-        column_sums = self.emission_count.sum(axis=0)       # axis = 0 -- column sums
-        fun1 = lambda x: (self.emission_count[x] + 1) / (column_sums + self.vocab_size)
+        emission = np.array(self.emission_count)
+        column_sums = emission.sum(axis=0)  # axis = 0 -- column sums
+        fun1 = lambda x: (emission[x] + 1) / (column_sums + self.vocab_size)
         fun2 = lambda x: 1 / self.vocab_size
         return fun1, fun2
 
@@ -44,7 +54,7 @@ class DirectAssignmentPOS:
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[index][t],
-                                                                       self.transition_count, self.K,
+                                                                       np.array(self.transition_count), self.K.value,
                                                                        self.emission_pdf)
         # posterior = np.random.uniform(0, 1, self.K+1)
         # posterior = posterior / posterior.sum()
@@ -66,28 +76,31 @@ class DirectAssignmentPOS:
             # Add a new state
             self.K += 1
 
+        # print("K:", self.K)
+
         self.transition_count[last_state, self.hidden_states[index][t]] += 1
         self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] += 1
+        # print(self.token_state_matrix.sum())
 
     def sample_hidden_states_on_last_state(self, index, t):
         # j is the hidden state value, ranging from 0 to T - 1
         last_state = self.hidden_states[index][t - 1]
 
         # exclude the counts of the current state
-        self.transition_count[last_state, self.hidden_states[index][t]] -= 1
-        assert np.any(self.transition_count[self.hidden_states[index][t]] >= 0), "Negative transition count"
+        self.transition_count[last_state][self.hidden_states[index][t]] -= 1
+        # assert np.any(self.transition_count[self.hidden_states[index][t]] >= 0), "Negative transition count"
 
         self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] -= 1
-        if np.any(self.emission_count[self.observations[index][t]] < 0):
-            print("index: ", index, "t: ", t)
-            print(self.emission_count[self.observations[index][t]])
-            print(self.hidden_states[index][t])
-            print(self.emission_count[self.observations[index][t]][self.hidden_states[index][t]])
-            raise ValueError("Negative emission count")
+        # if np.any(self.emission_count[self.observations[index][t]] < 0):
+        #     print("index: ", index, "t: ", t)
+        #     print(self.emission_count[self.observations[index][t]])
+        #     print(self.hidden_states[index][t])
+        #     print(self.emission_count[self.observations[index][t]][self.hidden_states[index][t]])
+        #     raise ValueError("Negative emission count")
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior_with_last_state(last_state, self.observations[index][t],
-                                                                       self.transition_count, self.K,
+                                                                       np.array(self.transition_count), self.K.value,
                                                                        self.emission_pdf)
 
         if np.any(posterior < 0):
@@ -112,7 +125,7 @@ class DirectAssignmentPOS:
 
             self.K += 1
 
-        self.transition_count[last_state, self.hidden_states[index][t]] += 1
+        self.transition_count[last_state][self.hidden_states[index][t]] += 1
         self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] += 1
 
     def sample_hidden_states_on_last_next_state(self, index, t):
@@ -120,32 +133,32 @@ class DirectAssignmentPOS:
         last_state = self.hidden_states[index][t - 1]
         next_state = self.hidden_states[index][t + 1]
 
-        if np.any(self.transition_count < 0):
-            print("index: ", index)
-            print(self.transition_count)
-            raise ValueError("Negative transition count")
+        # if np.any(self.transition_count < 0):
+        #     print("index: ", index)
+        #     print(self.transition_count)
+        #     raise ValueError("Negative transition count")
 
         # exclude the counts of the current state
-        self.transition_count[last_state, self.hidden_states[index][t]] -= 1
-        self.transition_count[self.hidden_states[index][t], next_state] -= 1
-        if np.any(self.transition_count < 0):
-            print("index: ", index)
-            print(self.transition_count)
-            raise ValueError("Negative transition count")
+        self.transition_count[last_state][self.hidden_states[index][t]] -= 1
+        self.transition_count[self.hidden_states[index][t]][next_state] -= 1
+        # if np.any(self.transition_count < 0):
+        #     print("index: ", index)
+        #     print(self.transition_count)
+        #     raise ValueError("Negative transition count")
 
         # print("observation: ", self.observations[index])
         self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] -= 1
-        if np.any(self.emission_count[self.observations[index][t]] < 0):
-            print("index: ", index, "t: ", t)
-            print(self.emission_count[self.observations[index][t]])
-            print(self.hidden_states[index][t])
-            print(self.emission_count[self.observations[index][t]][self.hidden_states[index][t]])
-            raise ValueError("Negative emission count")
+        # if np.any(self.emission_count[self.observations[index][t]] < 0):
+        #     print("index: ", index, "t: ", t)
+        #     print(self.emission_count[self.observations[index][t]])
+        #     print(self.hidden_states[index][t])
+        #     print(self.emission_count[self.observations[index][t]][self.hidden_states[index][t]])
+        #     raise ValueError("Negative emission count")
 
         # derive the current hidden state posterior over K states
         posterior = self.model.hidden_states_posterior(last_state, next_state, self.observations[index][t],
-                                                                       self.transition_count, self.emission_count, self.K,
-                                                                       self.emission_pdf)
+                                                       np.array(self.transition_count), self.K.value,
+                                                       self.emission_pdf)
 
         # print("posterior: ", index, t, posterior)
 
@@ -175,8 +188,8 @@ class DirectAssignmentPOS:
 
             self.K += 1
 
-        self.transition_count[last_state, self.hidden_states[index][t]] += 1
-        self.transition_count[self.hidden_states[index][t], next_state] += 1
+        self.transition_count[last_state][self.hidden_states[index][t]] += 1
+        self.transition_count[self.hidden_states[index][t]][next_state] += 1
         # print("before increment: ", self.token_state_matrix[self.observations[index][t]])
         self.emission_count[self.observations[index][t]][self.hidden_states[index][t]] += 1
         # print("after increment: ", self.token_state_matrix[self.observations[index][t]])
@@ -221,12 +234,14 @@ class DirectAssignmentPOS:
                 j = 0
                 # print("test_observations: ",test_observations[t])
                 # print("token_state_matrix: ", self.token_state_matrix[test_observations[t]])
-                a_mat[t + 1, j] = (self.emission_count[test_observations[t]][j] + 1) / (self.emission_count[test_observations[t]].sum() + self.K)
+                a_mat[t + 1, j] = (self.emission_count[test_observations[t]][j] + 1) / (
+                        self.emission_count[test_observations[t]].sum() + self.K)
             else:
                 # TODO: change range from K + 1 to K since delete one cluster as above
                 for j in range(self.K):
                     a_mat[t + 1, j] = (sum(a_mat[t, :] * self.pi_mat[:, j]) *
-                                       (self.emission_count[test_observations[t]][j] + 1) / (self.emission_count[test_observations[t]].sum() + self.K))
+                                       (self.emission_count[test_observations[t]][j] + 1) / (
+                                               self.emission_count[test_observations[t]].sum() + self.K))
             c_vec[t] = sum(a_mat[t + 1, :])
             a_mat[t + 1, :] /= c_vec[t]
 
