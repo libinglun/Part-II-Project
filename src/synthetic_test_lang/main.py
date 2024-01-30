@@ -18,7 +18,7 @@ def train_mode(args):
     model = HDPHMM()
     dataset: LanguageDataset = load_data(args.name, args.noise)
     sampler = DirectAssignmentPOS(
-        model, dataset.observations, dataset.size,
+        model, dataset.observations, dataset.num_obs,
         hidden_states=dataset.noisy_hidden_states,
         transition_count=dataset.noisy_trans_count,
         emission_count=dataset.noisy_emis_count,

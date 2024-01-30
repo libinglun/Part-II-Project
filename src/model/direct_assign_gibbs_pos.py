@@ -14,6 +14,7 @@ class DirectAssignmentPOS:
 
         # tokens are indices of word
         self.vocab_size = vocab_size
+        print(self.vocab_size)
         # self.token2count = self.initialize_emission_matrix(dataset, self.vocab_size)
         self.emission_count = emission_count.copy() if emission_count is not None else np.zeros((self.vocab_size, 1), dtype='int')
         print(self.emission_count.shape)
