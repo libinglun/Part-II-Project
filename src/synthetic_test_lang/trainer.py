@@ -68,13 +68,13 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1, )))
             timestamp = time.strftime("%m%d_%H%M%S", time.gmtime(time.time()))
             np.savez(
-                SAVE_PATH + f"ptb-noise-{args.noise}_iter-{iterations + prev_iters}_timestamp-{timestamp}_state.npz",
+                SAVE_PATH + f"{args.name}-noise-{args.noise}_iter-{iterations + prev_iters}_timestamp-{timestamp}_state.npz",
                 observation=observation_object, K=sampler.K,
                 hidden_state=hidden_states_object, trans_count=sampler.transition_count,
                 emis_count=sampler.emission_count,
                 alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta)
             np.savez(
-                SAVE_PATH + f"ptb-noise-{args.noise}_iter-{iterations + prev_iters}_timestamp-{timestamp}_result.npz",
+                SAVE_PATH + f"{args.name}-noise-{args.noise}_iter-{iterations + prev_iters}_timestamp-{timestamp}_result.npz",
                 trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=K_result,
                 alpha=best_alpha, gamma=best_gamma, beta=best_beta, result=np.array(kl_divergence_result),
                 hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)

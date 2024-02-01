@@ -63,7 +63,7 @@ def run(args):
         if args.name == 'Childes':
             create_lang_dataset_childes(args.noise)
 
-    mylogger.info("Start Training...")
+    mylogger.info(f"Start Training Dataset {args.name}...")
     if args.mode == 'train':
         train_mode(args)
     elif args.mode == 'resume':

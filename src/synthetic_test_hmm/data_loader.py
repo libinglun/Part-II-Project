@@ -5,14 +5,16 @@ from ..utils.const import LOAD_PATH
 
 from ..logger import mylogger
 
+
 class Dataset:
-    def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, noisy_emis_count):
+    def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count):
         self.real_hidden_states = real_hidden_states
         self.noisy_hidden_states = noisy_hidden_states
         self.real_trans_count = real_trans_count
         self.noisy_trans_count = noisy_trans_count
         self.real_trans_dist = real_trans_dist
         self.observations = observations
+        self.real_emis_count = real_emis_count
         self.noisy_emis_count = noisy_emis_count
 
 
@@ -26,10 +28,12 @@ def load_data(noisy_level, num_states, num_observations, size):
 
     real_trans_count = np.zeros((num_states, num_states), dtype='int')
     noisy_trans_count = np.zeros((num_states, num_states), dtype='int')
+    real_emis_count = np.zeros((num_observations, num_states), dtype='int')
     noisy_emis_count = np.zeros((num_observations, num_states), dtype='int')
 
     for i in range(size):
         for t in range(len(observations[i])):
+            real_emis_count[observations[i][t], real_hidden_states[i][t]] += 1
             noisy_emis_count[observations[i][t], noisy_hidden_states[i][t]] += 1
             if t > 0:
                 noisy_trans_count[noisy_hidden_states[i][t - 1], noisy_hidden_states[i][t]] += 1
@@ -47,4 +51,4 @@ def load_data(noisy_level, num_states, num_observations, size):
     mylogger.info(f"Initial Euclidean Distance: {euclidean_distance(real_trans_count, noisy_trans_count)}")
     # print(euclidean_distance(real_trans_count, noisy_trans_count))
 
-    return Dataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, noisy_emis_count)
+    return Dataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count)

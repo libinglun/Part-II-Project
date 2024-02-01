@@ -40,6 +40,11 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         mylogger.info(f"Distance between sampled and real transition counts is {count_distance}")
         print(f"Distance between sampled and real transition counts is {count_distance}")
 
+        # print(sampler.emission_count.shape, dataset.real_emis_count.shape)
+        emis_distance = euclidean_distance(sampler.emission_count[:, :args.states], dataset.real_emis_count)
+        mylogger.info(f"Distance between sampled and real emission counts is {emis_distance}")
+        print(f"Distance between sampled and real emission counts is {emis_distance}")
+
         trans_dist = sampler.sample_transition_distribution()
         trans_distance = euclidean_distance(trans_dist[:args.states, :args.states], dataset.real_trans_dist)
         trans_KL_divergence = kl_divergence(trans_dist[:args.states, :args.states], dataset.real_trans_dist)

@@ -14,5 +14,6 @@ def main():
     args = parser.parse_args()
     run(args)
 
+
 if __name__ == "__main__":
     main()
