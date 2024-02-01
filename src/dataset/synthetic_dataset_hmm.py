@@ -56,7 +56,18 @@ def create_hmm_dataset(noisy_level, num_states, num_obs, size):
 
     noisy_hidden_states = add_noise_to_states(syn_hidden_states, num_states, flip_prob=noisy_level)
 
-    file_path = LOAD_PATH + f"hmm_synthetic_dataset(noise-{noisy_level}_state-{num_states}_obs-{num_obs}_size-{size}).npz"
+    for i in range(len(syn_hidden_states)):
+        for j in range(len(syn_hidden_states[i])):
+            syn_hidden_states[i][j] += 1
+            noisy_hidden_states[i][j] += 1
+
+    for i in range(len(syn_hidden_states)):
+        syn_hidden_states[i].insert(0, 0)
+        noisy_hidden_states[i].insert(0, 0)
+
+        syn_sequences[i].insert(0, -1)
+
+    file_path = LOAD_PATH + f"hmm_synthetic_dataset(noise-{noisy_level}_state-{num_states + 1}_obs-{num_obs}_size-{size}).npz"
     seq_object = np.array(syn_sequences, dtype=object)
     hid_object = np.array(syn_hidden_states, dtype=object)
     noisy_hid_object = np.array(noisy_hidden_states, dtype=object)
@@ -64,7 +75,7 @@ def create_hmm_dataset(noisy_level, num_states, num_obs, size):
     emis_object = emission_probs
     np.savez(file_path, observation=seq_object, real_hidden=hid_object, noisy_hidden=noisy_hid_object,
              real_trans=trans_object, emis=emis_object, noisy_level=noisy_level)
-    mylogger.info(f"Dataset with noise-{noisy_level}_state-{num_states}_obs-{num_obs}_size-{size} created...")
+    mylogger.info(f"Dataset with noise-{noisy_level}_state-{num_states + 1}_obs-{num_obs}_size-{size} created...")
 
 
 def main():

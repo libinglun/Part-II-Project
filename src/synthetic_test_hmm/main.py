@@ -57,7 +57,8 @@ def resume_mode(args):
 
 def run(args):
     if not os.path.exists(LOAD_PATH + f"hmm_synthetic_dataset(noise-{args.noise}_state-{args.states}_obs-{args.obs}_size-{args.size}).npz"):
-        create_hmm_dataset(args.noise, args.states, args.obs, args.size)
+        # dataset would add on a new 0 state (BOS)
+        create_hmm_dataset(args.noise, args.states - 1, args.obs, args.size)
 
     mylogger.info("Start Training...")
     mylogger.info(f"Noise Level: {args.noise}, Number of States: {args.states}, Number of Observations: {args.obs}, Dataset Size: {args.size}")
