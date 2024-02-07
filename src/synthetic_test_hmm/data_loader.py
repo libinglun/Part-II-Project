@@ -6,7 +6,7 @@ from ..utils.const import LOAD_PATH
 from ..logger import mylogger
 
 
-class Dataset:
+class SynHMMDataset:
     def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count):
         self.real_hidden_states = real_hidden_states
         self.noisy_hidden_states = noisy_hidden_states
@@ -51,4 +51,4 @@ def load_data(noisy_level, num_states, num_observations, size):
     mylogger.info(f"Initial Euclidean Distance: {euclidean_distance(real_trans_count, noisy_trans_count)}")
     # print(euclidean_distance(real_trans_count, noisy_trans_count))
 
-    return Dataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count)
+    return SynHMMDataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count)

@@ -2,7 +2,7 @@ import re
 import numpy as np
 import os
 
-from .data_loader import load_data, Dataset
+from .data_loader import load_data, SynHMMDataset
 from .trainer import train_sampler
 
 from ..model import HDPHMM, DirectAssignmentPOS
@@ -16,7 +16,7 @@ set_print_options()
 
 def train_mode(args):
     model = HDPHMM()
-    dataset: Dataset = load_data(args.noise, args.states, args.obs, args.size)
+    dataset: SynHMMDataset = load_data(args.noise, args.states, args.obs, args.size)
     sampler = DirectAssignmentPOS(
         model, dataset.observations, args.obs,
         hidden_states=dataset.noisy_hidden_states,
@@ -50,7 +50,7 @@ def resume_mode(args):
     model = HDPHMM(alpha, gamma, beta)
     sampler = DirectAssignmentPOS(model, observations, args.obs, hidden_states=hidden_states, emission_count=emis_count, transition_count=trans_count, K=K)
 
-    dataset: Dataset = load_data(args.noise, args.states, args.obs, args.size)
+    dataset: SynHMMDataset = load_data(args.noise, args.states, args.obs, args.size)
 
     train_sampler(sampler, args, dataset, prev_iters=prev_iters)
 

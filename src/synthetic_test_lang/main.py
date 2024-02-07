@@ -2,7 +2,7 @@ import re
 import numpy as np
 import os
 
-from .data_loader import load_data, LanguageDataset
+from .data_loader import load_data, SynLangDataset
 from .trainer import train_sampler
 
 from ..model import HDPHMM, DirectAssignmentPOS
@@ -16,7 +16,7 @@ set_print_options()
 
 def train_mode(args):
     model = HDPHMM()
-    dataset: LanguageDataset = load_data(args.name, args.noise)
+    dataset: SynLangDataset = load_data(args.name, args.noise)
     sampler = DirectAssignmentPOS(
         model, dataset.observations, dataset.num_obs,
         hidden_states=dataset.noisy_hidden_states,
@@ -51,7 +51,7 @@ def resume_mode(args):
     sampler = DirectAssignmentPOS(model, observations, args.obs, hidden_states=hidden_states, emission_count=emis_count,
                                   transition_count=trans_count, K=K)
 
-    dataset: LanguageDataset = load_data(args.name, args.noise)
+    dataset: SynLangDataset = load_data(args.name, args.noise)
 
     train_sampler(sampler, args, dataset, prev_iters=prev_iters)
 

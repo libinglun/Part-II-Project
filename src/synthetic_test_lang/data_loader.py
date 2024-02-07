@@ -5,7 +5,7 @@ from ..utils.const import LOAD_PATH
 
 from ..logger import mylogger
 
-class LanguageDataset:
+class SynLangDataset:
     def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, observations, noisy_emis_count, num_states, num_obs, size):
         self.real_hidden_states = real_hidden_states
         self.noisy_hidden_states = noisy_hidden_states
@@ -52,4 +52,4 @@ def load_data(dataset_name, noise_level):
     mylogger.info(f"Initial Euclidean Distance: {euclidean_distance(real_trans_count, noisy_trans_count)}")
     # print(euclidean_distance(real_trans_count, noisy_trans_count))
 
-    return LanguageDataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, observations, noisy_emis_count, num_states, num_observations, size)
+    return SynLangDataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, observations, noisy_emis_count, num_states, num_observations, size)
