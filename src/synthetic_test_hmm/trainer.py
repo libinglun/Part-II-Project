@@ -2,7 +2,7 @@ import tqdm
 import time
 import numpy as np
 
-from ..utils.utils import euclidean_distance, kl_divergence, difference
+from ..utils.utils import euclidean_distance, kl_divergence, difference, compute_cost, flatten
 from ..utils.const import SAVE_PATH
 
 from ..logger import mylogger
@@ -16,6 +16,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     K_result = []
     alpha_result = []
     gamma_result = []
+    flattened_real_hidden_states = flatten(dataset.real_hidden_states)
 
     iterations = args.iter
     for iteration in tqdm.tqdm(range(iterations), desc="training model"):
@@ -25,7 +26,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
 
         sampler.update_K()
-        # print("new K: ", sampler.K)
+        print("new K: ", sampler.K)
         mylogger.info(f"new K: {sampler.K}")
         K_result.append(sampler.K)
 
@@ -55,9 +56,17 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         print(f"KL Divergence between sampled and real transition distribution is {trans_KL_divergence}")
 
         mis_states, total_states = difference(sampler.hidden_states, dataset.real_hidden_states)
-        # print(mis_states, total_states)
         mylogger.info(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
         print(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
+
+        flattened_hidden_states = flatten(sampler.hidden_states)
+        _, indexes = compute_cost(flattened_hidden_states, flattened_real_hidden_states)
+        dic = dict((v, k) for k, v in indexes)
+        print(dic)
+        tmp = np.array([dic[flattened_hidden_states[t]] for t in range(len(flattened_hidden_states))])
+        zero_one_loss = np.sum(tmp != flattened_real_hidden_states)
+        print(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
+        mylogger.info(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
 
         # print(sampler.hidden_states[:3])
         # print(dataset.real_hidden_states[:3])

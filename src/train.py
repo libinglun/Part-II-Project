@@ -50,31 +50,42 @@ if __name__ == "__main__":
         sampler.sample_alpha()
         sampler.sample_gamma()
 
+        print(f"New updated K is: {sampler.K}")
+
         # sample transition distribution matrix based on the result of direct assignment sampling (every 10 iters)
         if iteration % 10 == 0:
             sampler.sample_transition_distribution()
             # calculate the log likelihood of test observation sequence based on the new sampled transition distribution and result of direct assignment sampling (every 10 iters)
             _, loglik = sampler.compute_log_marginal_likelihood(test_observations)
             # output a matrix a_mat, a_mat[i, j] represents the probability of state j at time stamp i
-            loglik_test_sample.append(loglik)
+            # loglik_test_sample.append(loglik)
+            print(f"The log likelihood of test observation is: {loglik}")
 
             # save the result of sampled hidden states and hyperparameter (every 10 iters)
             hidden_states_sample.append(sampler.hidden_states.copy())
             hyperparams_sample.append(np.array([sampler.model.alpha, sampler.model.gamma]))
 
+            cost, indexes = compute_cost(sampler.hidden_states.copy(), real_hidden_states)
+            dic = dict((v, k) for k, v in indexes)
+            print(dic)
+            tmp = np.array([dic[sampler.hidden_states[t]] for t in range(len(hidden_states_sample[0]))])
 
-mismatch_vec = []
-zt_sample_permute = []
-K_real = len(np.unique(real_hidden_states))
-for ii in range(len(hidden_states_sample)):
-    cost, indexes = compute_cost(hidden_states_sample[ii], real_hidden_states)
-    dic = dict((v, k) for k, v in indexes)
-    tmp = np.array([dic[hidden_states_sample[ii][t]] for t in range(len(hidden_states_sample[0]))])
+            mismatch_vec = (np.sum(tmp != real_hidden_states))
+            print(f"Zero one loss rate is : {round(mismatch_vec / len(real_hidden_states) * 100, 3)}%")
 
-    zt_sample_permute.append(tmp.copy())
-    mismatch_vec.append(np.sum(tmp != real_hidden_states))
 
-print(mismatch_vec, loglik_test_sample)
+# mismatch_vec = []
+# zt_sample_permute = []
+# K_real = len(np.unique(real_hidden_states))
+# for ii in range(len(hidden_states_sample)):
+#     cost, indexes = compute_cost(hidden_states_sample[ii], real_hidden_states)
+#     dic = dict((v, k) for k, v in indexes)
+#     tmp = np.array([dic[hidden_states_sample[ii][t]] for t in range(len(hidden_states_sample[0]))])
+#
+#     zt_sample_permute.append(tmp.copy())
+#     mismatch_vec.append(np.sum(tmp != real_hidden_states))
+#
+# print(mismatch_vec, loglik_test_sample)
 
 # save results
 # seed = int((int(sys.argv[1])-1)%10);

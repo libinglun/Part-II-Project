@@ -76,3 +76,6 @@ def set_print_options():
     np.set_printoptions(suppress=True, precision=4)
     np.set_printoptions(linewidth=180)
     np.set_printoptions(formatter={'int': '{:5d}'.format})
+
+def flatten(lists):
+    return [element for l in lists for element in l]

@@ -2,7 +2,7 @@ import tqdm
 import time
 import numpy as np
 
-from ..utils.utils import euclidean_distance, kl_divergence, difference
+from ..utils.utils import euclidean_distance, kl_divergence, difference, compute_cost, flatten
 from ..utils.const import SAVE_PATH
 
 from ..logger import mylogger
@@ -18,6 +18,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     gamma_result = []
     best_alpha, best_gamma = None, None
     best_beta = None
+    flattened_real_hidden_states = flatten(dataset.real_hidden_states)
 
     iterations = args.iter
     for iteration in tqdm.tqdm(range(iterations), desc="training model:"):
@@ -48,6 +49,15 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         mis_states, total_states = difference(sampler.hidden_states, dataset.real_hidden_states)
         print(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
         mylogger.info(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
+
+        # flattened_hidden_states = flatten(sampler.hidden_states)
+        # _, indexes = compute_cost(flattened_hidden_states, flattened_real_hidden_states)
+        # dic = dict((v, k) for k, v in indexes)
+        # print(dic)
+        # tmp = np.array([dic[flattened_hidden_states[t]] for t in range(len(flattened_hidden_states))])
+        # zero_one_loss = np.sum(tmp != flattened_real_hidden_states)
+        # print(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
+        # mylogger.info(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
 
         kl_divergence_result.append((count_distance, trans_KL_divergence, mis_states))
         print(sampler.transition_count)

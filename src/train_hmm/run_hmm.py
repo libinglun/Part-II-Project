@@ -3,7 +3,7 @@ import argparse
 from .data_loader import load_data, TrainHMMDataset
 from .trainer import train_sampler
 
-from ..model import HDPHMM, DirectAssignmentPOS
+from ..model import HDPHMM, DirectAssignmentHMM
 from ..logger import mylogger
 
 def main():
@@ -15,6 +15,7 @@ def main():
 
     args = parser.parse_args()
 
+    print("start training...")
     mylogger.info("Start Training...")
     mylogger.info(
         f"Number of States: {args.states}, Number of Observations: {args.obs}, Dataset Length: {args.len}")
@@ -22,6 +23,10 @@ def main():
     model = HDPHMM()
     dataset: TrainHMMDataset = load_data(args.states, args.obs, args.len)
     # TODO: modify the sampler to let it fit with only one long sequence
-    sampler = DirectAssignmentPOS(model, dataset.train_obs, args.obs)
+    print("dataset loaded...")
+    sampler = DirectAssignmentHMM(model, dataset.train_obs, args.obs)
 
     train_sampler(sampler, args, dataset)
+
+if __name__ == '__main__':
+    main()
