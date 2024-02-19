@@ -18,7 +18,10 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     gamma_result = []
     best_alpha, best_gamma = None, None
     best_beta = None
-    flattened_real_hidden_states = flatten(dataset.real_hidden_states)
+    # flattened_real_hidden_states = flatten(dataset.real_hidden_states)
+
+    initial_trans_dist = sampler.sample_transition_distribution()
+    initial_emis_dist = sampler.calculate_emission_distribution()
 
     iterations = args.iter
     for iteration in tqdm.tqdm(range(iterations), desc="training model:"):
@@ -63,8 +66,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         print(sampler.transition_count)
         mylogger.info(f"The new sampled transition count is:\n {sampler.transition_count}")
 
-        if count_distance < best_distance:
-            best_distance = count_distance
+        if trans_KL_divergence < best_distance:
+            best_distance = trans_KL_divergence
             sampled_trans_dist = sampler.sample_transition_distribution()
             sampled_emis_dist = sampler.calculate_emission_distribution()
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1, )))
@@ -85,6 +88,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
                 alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta)
             np.savez(
                 SAVE_PATH + f"{args.name}-noise-{args.noise}_iter-{iterations + prev_iters}_timestamp-{timestamp}_result.npz",
+                init_trans_dist=initial_trans_dist, init_emis_dist=initial_emis_dist,
                 trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=K_result,
                 alpha=best_alpha, gamma=best_gamma, beta=best_beta, result=np.array(kl_divergence_result),
                 hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)

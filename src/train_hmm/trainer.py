@@ -1,12 +1,13 @@
 import numpy as np
 import tqdm
 
-from ..utils.utils import compute_cost
+from ..utils.utils import compute_cost, set_print_options
 
 from ..logger import mylogger
 
 
 def train_sampler(sampler, args, dataset):
+    set_print_options()
     iterations = args.iter
     # K_real = args.num_states
 
@@ -14,10 +15,17 @@ def train_sampler(sampler, args, dataset):
     for t in range(1, sampler.seq_length):
         sampler.sample_one_step_ahead(t)
 
+    print(sampler.transition_count)
+    print(sampler.emission_count[:10])
+
+    # raise ValueError('break point')
+
     for iteration in range(iterations):
         for t in range(1, sampler.seq_length - 1):
             sampler.sample_hidden_states_on_last_next_state(t)
         sampler.sample_hidden_states_on_last_state(sampler.seq_length - 1)
+        # print(sampler.transition_count)
+        # print(sampler.emission_count[:10])
         print(f"New sampled K is: {sampler.K}")
         print(sampler.hidden_states[:20])
         sampler.update_K()

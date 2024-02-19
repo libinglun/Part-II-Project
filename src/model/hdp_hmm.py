@@ -4,7 +4,7 @@ from numpy.typing import NDArray
 CONST_EPS = 1e-6
 
 # change alpha_a_prior would change the distribution of posterior
-ALPHA_a_PRIOR = 1
+ALPHA_a_PRIOR = 3
 # change alpha_b_prior would change the number of states K
 ALPHA_b_PRIOR = 0.01
 
@@ -50,6 +50,7 @@ class HDPHMM:
                                              new_hidden_state_dist * observation_dist_with_new))
         # normalise the new distribution array
         hidden_states_posterior = hidden_states_posterior / hidden_states_posterior.sum()
+        # print(hidden_states_posterior)
 
         return hidden_states_posterior
 

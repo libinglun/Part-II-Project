@@ -18,6 +18,12 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     gamma_result = []
     flattened_real_hidden_states = flatten(dataset.real_hidden_states)
 
+    initial_trans_dist = sampler.sample_transition_distribution()
+    initial_emis_dist = sampler.calculate_emission_distribution()
+    # np.savez(
+    #     SAVE_PATH + f"noise-{args.noise}_iter-{0}_state-{args.states}_obs-{args.obs}_size-{args.size}_result.npz",
+    #     init_trans_dist=initial_trans_dist, init_emis_dist=initial_emis_dist)
+
     iterations = args.iter
     for iteration in tqdm.tqdm(range(iterations), desc="training model"):
         for index in range(args.size):
@@ -90,5 +96,6 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
                 emis_count=sampler.emission_count, alpha=sampler.model.alpha, gamma=sampler.model.gamma, beta=beta)
             np.savez(
                 SAVE_PATH + f"noise-{args.noise}_iter-{iterations + prev_iters}_state-{args.states}_obs-{args.obs}_size-{args.size}_timestamp-{timestamp}_result.npz",
+                init_trans_dist=initial_trans_dist, init_emis_dist=initial_emis_dist,
                 trans_dist=sampled_trans_dist, emis_dist=sampled_emis_dist, K=K_result,
                 result=np.array(kl_divergence_result), hyperparam_alpha=alpha_result, hyperparam_gamma=gamma_result)
