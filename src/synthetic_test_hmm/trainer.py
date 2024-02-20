@@ -2,7 +2,7 @@ import tqdm
 import time
 import numpy as np
 
-from ..utils.utils import euclidean_distance, kl_divergence, difference, compute_cost, flatten
+from ..utils.utils import euclidean_distance, kl_divergence, difference, compute_cost, flatten, calculate_variation_of_information
 from ..utils.const import SAVE_PATH
 
 from ..logger import mylogger
@@ -20,9 +20,6 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
 
     initial_trans_dist = sampler.sample_transition_distribution()
     initial_emis_dist = sampler.calculate_emission_distribution()
-    # np.savez(
-    #     SAVE_PATH + f"noise-{args.noise}_iter-{0}_state-{args.states}_obs-{args.obs}_size-{args.size}_result.npz",
-    #     init_trans_dist=initial_trans_dist, init_emis_dist=initial_emis_dist)
 
     iterations = args.iter
     for iteration in tqdm.tqdm(range(iterations), desc="training model"):
@@ -30,6 +27,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
             for t in range(1, sampler.seq_length[index] - 1):
                 sampler.sample_hidden_states_on_last_next_state(index, t)
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
+
+        mylogger.info(f"iter {iteration} VI: {calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))}")
 
         sampler.update_K()
         print("new K: ", sampler.K)
@@ -68,7 +67,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         flattened_hidden_states = flatten(sampler.hidden_states)
         _, indexes = compute_cost(flattened_hidden_states, flattened_real_hidden_states)
         dic = dict((v, k) for k, v in indexes)
-        print(dic)
+        # print(dic)
         tmp = np.array([dic[flattened_hidden_states[t]] for t in range(len(flattened_hidden_states))])
         zero_one_loss = np.sum(tmp != flattened_real_hidden_states)
         print(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")

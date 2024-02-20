@@ -2,7 +2,7 @@ import tqdm
 import time
 import numpy as np
 
-from ..utils.utils import euclidean_distance, kl_divergence, difference, compute_cost, flatten
+from ..utils.utils import euclidean_distance, kl_divergence, difference, calculate_variation_of_information, flatten
 from ..utils.const import SAVE_PATH
 
 from ..logger import mylogger
@@ -23,6 +23,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     initial_trans_dist = sampler.sample_transition_distribution()
     initial_emis_dist = sampler.calculate_emission_distribution()
 
+    print("initial VI: ", calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states)))
+
     iterations = args.iter
     for iteration in tqdm.tqdm(range(iterations), desc="training model:"):
         for index in range(dataset.size):
@@ -30,8 +32,14 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
                 sampler.sample_hidden_states_on_last_next_state(index, t)
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
 
+        print(f"iter {iteration} VI: ",
+              calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states)))
+        mylogger.info(f"iter {iteration} VI: ",
+              calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states)))
+
         sampler.update_K()
         print("new K: ", sampler.K)
+        mylogger.info(f"new K: {sampler.K}")
         K_result.append(sampler.K)
 
         sampler.sample_m()
