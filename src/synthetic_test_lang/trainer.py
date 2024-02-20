@@ -34,8 +34,7 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
 
         print(f"iter {iteration} VI: ",
               calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states)))
-        mylogger.info(f"iter {iteration} VI: ",
-              calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states)))
+        mylogger.info(f"iter {iteration} VI: {calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))}")
 
         sampler.update_K()
         print("new K: ", sampler.K)

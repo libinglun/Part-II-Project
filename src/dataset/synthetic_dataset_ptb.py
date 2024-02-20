@@ -89,15 +89,15 @@ def create_lang_dataset_ptb(noise_level):
 
         return hidden_states_universal, hidden_states_specific, observations
 
-    def add_noise_to_states_ptb(hidden_states, number_states, flip_prob=0.5):
+    def add_noise_to_states_ptb(hidden_states, number_states, flip_prob=0.5, remove=False):
         noisy_hidden_states = []
         for sequence in hidden_states:
             noisy_sequence = []
             for state in sequence:
                 if np.random.rand() < flip_prob:
-                    # Flip the state to a different random state
                     possible_states = list(range(1, number_states + 1))
-                    possible_states.remove(state)  # Remove the current state from possibilities
+                    if remove:
+                        possible_states.remove(state)
                     new_state = np.random.choice(possible_states)
                     noisy_sequence.append(new_state)
                 else:
