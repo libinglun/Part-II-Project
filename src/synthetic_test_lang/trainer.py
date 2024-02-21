@@ -9,13 +9,13 @@ from ..logger import mylogger
 
 def train_sampler(sampler, args, dataset, prev_iters=0):
 
-    best_distance = 1e9
+    best_score = 20
     sampled_trans_dist = None
     sampled_emis_dist = None
     kl_divergence_result = []
     K_result = []
-    alpha_result = []
-    gamma_result = []
+    alpha_result = [sampler.model.alpha]
+    gamma_result = [sampler.model.gamma]
     best_alpha, best_gamma = None, None
     best_beta = None
     # flattened_real_hidden_states = flatten(dataset.real_hidden_states)
@@ -32,9 +32,10 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
                 sampler.sample_hidden_states_on_last_next_state(index, t)
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
 
-        print(f"iter {iteration} VI: ",
-              calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states)))
-        mylogger.info(f"iter {iteration} VI: {calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))}")
+        vi = calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))
+
+        print(f"iter {iteration} VI: ", vi)
+        mylogger.info(f"iter {iteration} VI: {vi}")
 
         sampler.update_K()
         print("new K: ", sampler.K)
@@ -48,13 +49,19 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         alpha_result.append(sampler.model.alpha)
         sampler.sample_gamma()
         gamma_result.append(sampler.model.gamma)
+        mylogger.info(f"hyperparams -- alpha: {sampler.model.alpha}, gamma: {sampler.model.gamma}")
 
-        count_distance = euclidean_distance(sampler.transition_count[:dataset.num_states, :dataset.num_states], dataset.real_trans_count)
-        trans_KL_divergence = kl_divergence(sampler.transition_count[:dataset.num_states, :dataset.num_states], dataset.real_trans_count)
-        print(f"Distance between sampled and real transition counts is {count_distance}")
-        print(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
-        mylogger.info(f"Distance between sampled and real transition counts is {count_distance}")
-        mylogger.info(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
+        if len(sampler.transition_count) >= dataset.num_states:
+            count_distance = euclidean_distance(sampler.transition_count[:dataset.num_states, :dataset.num_states], dataset.real_trans_count)
+            trans_KL_divergence = kl_divergence(sampler.transition_count[:dataset.num_states, :dataset.num_states], dataset.real_trans_count)
+            print(f"Distance between sampled and real transition counts is {count_distance}")
+            print(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
+            mylogger.info(f"Distance between sampled and real transition counts is {count_distance}")
+            mylogger.info(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
+        else:
+            mylogger.info("Number of hidden states less than standard hidden states")
+            count_distance = None
+            trans_KL_divergence = None
 
         mis_states, total_states = difference(sampler.hidden_states, dataset.real_hidden_states)
         print(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
@@ -73,8 +80,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         print(sampler.transition_count)
         mylogger.info(f"The new sampled transition count is:\n {sampler.transition_count}")
 
-        if trans_KL_divergence < best_distance:
-            best_distance = trans_KL_divergence
+        if vi < best_score:
+            best_score = vi
             sampled_trans_dist = sampler.sample_transition_distribution()
             sampled_emis_dist = sampler.calculate_emission_distribution()
             beta = np.hstack((sampler.model.beta_vec, sampler.model.beta_new.reshape(1, )))

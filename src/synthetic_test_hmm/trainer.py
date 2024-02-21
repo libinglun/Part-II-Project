@@ -14,8 +14,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     sampled_emis_dist = None
     kl_divergence_result = []
     K_result = []
-    alpha_result = []
-    gamma_result = []
+    alpha_result = [sampler.model.alpha]
+    gamma_result = [sampler.model.gamma]
     flattened_real_hidden_states = flatten(dataset.real_hidden_states)
 
     initial_trans_dist = sampler.sample_transition_distribution()
@@ -41,7 +41,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         alpha_result.append(sampler.model.alpha)
         sampler.sample_gamma()
         gamma_result.append(sampler.model.gamma)
-        # print(f"iteration {iter} has transition counts {model.transition_count.sum()} in total: \n {model.transition_count}")
+        mylogger.info(f"hyperparams -- alpha: {sampler.model.alpha}, gamma: {sampler.model.gamma}")
+
         count_distance = euclidean_distance(sampler.transition_count[:args.states, :args.states], dataset.real_trans_count)
         mylogger.info(f"Distance between sampled and real transition counts is {count_distance}")
         print(f"Distance between sampled and real transition counts is {count_distance}")
