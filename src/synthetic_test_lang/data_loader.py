@@ -18,14 +18,19 @@ class SynLangDataset:
         self.size = size
 
 
-def load_data(dataset_name, noise_level):
+def load_data(dataset_name, noise_level, universal=True):
     dataset_path = LOAD_PATH + dataset_name + f"_synthetic_dataset(noise-{noise_level}).npz"
     loaded_npz = np.load(dataset_path, allow_pickle=True)
-    num_states = int(loaded_npz['num_states'])
     num_observations = int(loaded_npz['num_obs'])
     observations = list(loaded_npz['observation'])
-    real_hidden_states = list(loaded_npz['real_hidden_universal'])
-    noisy_hidden_states = list(loaded_npz['noisy_hidden_universal'])
+    if universal:
+        num_states = int(loaded_npz['num_states_universal'])
+        real_hidden_states = list(loaded_npz['real_hidden_universal'])
+        noisy_hidden_states = list(loaded_npz['noisy_hidden_universal'])
+    else:
+        num_states = int(loaded_npz['num_states_specific'])
+        real_hidden_states = list(loaded_npz['real_hidden_specific'])
+        noisy_hidden_states = list(loaded_npz['noisy_hidden_specific'])
 
     size = len(observations)
 

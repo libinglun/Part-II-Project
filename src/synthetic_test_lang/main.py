@@ -15,7 +15,7 @@ set_print_options()
 
 
 def train_mode(args):
-    model = HDPHMM()
+    model = HDPHMM(alpha=1.0, gamma=3.0)
     dataset: SynLangDataset = load_data(args.name, args.noise)
     sampler = DirectAssignmentPOS(
         model, dataset.observations, dataset.num_obs,
@@ -64,6 +64,7 @@ def run(args):
             create_lang_dataset_childes(args.noise)
 
     mylogger.info(f"Start Training Dataset {args.name}...")
+    mylogger.info(f"Total iters: {args.iter}")
     if args.mode == 'train':
         train_mode(args)
     elif args.mode == 'resume':

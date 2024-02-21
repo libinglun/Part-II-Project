@@ -22,8 +22,7 @@ def create_lang_dataset_ptb(noise_level):
                         word = fields[1].lower()  # Word form is the second field
                         upos = fields[3]  # Universal POS tag is the fourth field
                         xpos = fields[4]  # Language specific POS tag is the fifth field
-                        if upos not in ['NUM', 'PUNCT', 'INTJ',
-                                        'X']:  # Remove punctuation, interjection, and undefined pos tags
+                        if upos not in ['NUM', 'PUNCT', 'INTJ', 'X']:  # Remove number, punctuation, interjection, and undefined pos tags
                             current_sentence.append((word, upos, xpos))
 
                 # New sentence
@@ -138,7 +137,7 @@ def create_lang_dataset_ptb(noise_level):
     noisy_uni_hid_object = np.array(noisy_hidden_states_universal, dtype=object)
     spc_hid_object = np.array(hidden_states_specific, dtype=object)
     noisy_spc_hid_object = np.array(noisy_hidden_states_specific, dtype=object)
-    np.savez(file_path, num_states=len(upos_to_index) + 1, num_obs=len(word_to_index), observation=obs_object,
+    np.savez(file_path, num_states_universal=len(upos_to_index) + 1, num_states_specific=len(xpos_to_index) + 1, num_obs=len(word_to_index), observation=obs_object,
              real_hidden_universal=uni_hid_object, noisy_hidden_universal=noisy_uni_hid_object,
              real_hidden_specific=spc_hid_object, noisy_hidden_specifc=noisy_spc_hid_object,
              noisy_level=noise_level)
