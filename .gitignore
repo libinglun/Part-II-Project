@@ -2,6 +2,7 @@
 *.npz
 zhou_model/
 projenv/
+CRF++-0.58/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -2,12 +2,12 @@ import tqdm
 import time
 import numpy as np
 
-from ..utils.utils import euclidean_distance, kl_divergence, difference, calculate_variation_of_information, flatten
+from ..utils.utils import euclidean_distance, kl_divergence, difference, calculate_variation_of_information, flatten, calculate_v_measure
 from ..utils.const import SAVE_PATH
 
 from ..logger import mylogger
 
-def train_sampler(sampler, args, dataset, prev_iters=0):
+def train_sampler(sampler, args, dataset, prev_iters=0, sample_hyperparam=False):
 
     best_score = 20
     sampled_trans_dist = None
@@ -23,7 +23,14 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
     initial_trans_dist = sampler.sample_transition_distribution()
     initial_emis_dist = sampler.calculate_emission_distribution()
 
-    print("initial VI: ", calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states)))
+    mylogger.info(f"Initial hyperparams -- alpha: {sampler.model.alpha}, gamma: {sampler.model.gamma}")
+    vi, nvi = calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))
+    homogeneity, completeness, v_measure = calculate_v_measure(flatten(dataset.real_hidden_states),
+                                                               flatten(sampler.hidden_states))
+    mylogger.info(f"Initial -- VI: {vi}, Normalised VI: {nvi}")
+    mylogger.info(f"Initial -- Homogeneity: {homogeneity}, Completeness: {completeness}, V Measure: {v_measure}")
+    if not sample_hyperparam:
+        mylogger.info("Not sampling hyperparameters-------")
 
     iterations = args.iter
     for iteration in tqdm.tqdm(range(iterations), desc="training model:"):
@@ -32,30 +39,33 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
                 sampler.sample_hidden_states_on_last_next_state(index, t)
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
 
-        vi = calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))
+        vi, nvi = calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))
+        homogeneity, completeness, v_measure = calculate_v_measure(flatten(dataset.real_hidden_states), flatten(sampler.hidden_states))
 
-        print(f"iter {iteration} VI: ", vi)
-        mylogger.info(f"iter {iteration} VI: {vi}")
+        # print(f"iter {iteration} VI: ", vi)
+        mylogger.info(f"iter {iteration} -- VI: {vi}, Normalised VI: {nvi}")
+        mylogger.info(f"iter {iteration} -- Homogeneity: {homogeneity}, Completeness: {completeness}, V Measure: {v_measure}")
 
         sampler.update_K()
-        print("new K: ", sampler.K)
+        # print("new K: ", sampler.K)
         mylogger.info(f"new K: {sampler.K}")
         K_result.append(sampler.K)
 
         sampler.sample_m()
         sampler.sample_beta()
 
-        sampler.sample_alpha()
-        alpha_result.append(sampler.model.alpha)
-        sampler.sample_gamma()
-        gamma_result.append(sampler.model.gamma)
-        mylogger.info(f"hyperparams -- alpha: {sampler.model.alpha}, gamma: {sampler.model.gamma}")
+        if sample_hyperparam:
+            sampler.sample_alpha()
+            alpha_result.append(sampler.model.alpha)
+            sampler.sample_gamma()
+            gamma_result.append(sampler.model.gamma)
+            mylogger.info(f"hyperparams -- alpha: {sampler.model.alpha}, gamma: {sampler.model.gamma}")
 
         if len(sampler.transition_count) >= dataset.num_states:
             count_distance = euclidean_distance(sampler.transition_count[:dataset.num_states, :dataset.num_states], dataset.real_trans_count)
             trans_KL_divergence = kl_divergence(sampler.transition_count[:dataset.num_states, :dataset.num_states], dataset.real_trans_count)
-            print(f"Distance between sampled and real transition counts is {count_distance}")
-            print(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
+            # print(f"Distance between sampled and real transition counts is {count_distance}")
+            # print(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
             mylogger.info(f"Distance between sampled and real transition counts is {count_distance}")
             mylogger.info(f"KL Divergence between sampled and real transition counts is {trans_KL_divergence}")
         else:
@@ -64,20 +74,22 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
             trans_KL_divergence = None
 
         mis_states, total_states = difference(sampler.hidden_states, dataset.real_hidden_states)
-        print(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
+        # print(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
         mylogger.info(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
 
-        # flattened_hidden_states = flatten(sampler.hidden_states)
-        # _, indexes = compute_cost(flattened_hidden_states, flattened_real_hidden_states)
-        # dic = dict((v, k) for k, v in indexes)
-        # print(dic)
-        # tmp = np.array([dic[flattened_hidden_states[t]] for t in range(len(flattened_hidden_states))])
-        # zero_one_loss = np.sum(tmp != flattened_real_hidden_states)
-        # print(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
-        # mylogger.info(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
+        '''
+        flattened_hidden_states = flatten(sampler.hidden_states)
+        _, indexes = compute_cost(flattened_hidden_states, flattened_real_hidden_states)
+        dic = dict((v, k) for k, v in indexes)
+        print(dic)
+        tmp = np.array([dic[flattened_hidden_states[t]] for t in range(len(flattened_hidden_states))])
+        zero_one_loss = np.sum(tmp != flattened_real_hidden_states)
+        print(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
+        mylogger.info(f"Zero one loss rate is : {round(zero_one_loss / total_states * 100, 3)}%")
+        '''
 
         kl_divergence_result.append((count_distance, trans_KL_divergence, mis_states))
-        print(sampler.transition_count)
+        # print(sampler.transition_count)
         mylogger.info(f"The new sampled transition count is:\n {sampler.transition_count}")
 
         if vi < best_score:

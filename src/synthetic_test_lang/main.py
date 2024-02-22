@@ -15,7 +15,7 @@ set_print_options()
 
 
 def train_mode(args):
-    model = HDPHMM(alpha=1.0, gamma=3.0)
+    model = HDPHMM(alpha=0.5, gamma=5.0)
     dataset: SynLangDataset = load_data(args.name, args.noise)
     sampler = DirectAssignmentPOS(
         model, dataset.observations, dataset.num_obs,
@@ -28,7 +28,7 @@ def train_mode(args):
     for i in range(dataset.num_states - 1):
         sampler.model.update_beta_with_new_state()
 
-    train_sampler(sampler, args, dataset)
+    train_sampler(sampler, args, dataset, sample_hyperparam=True)
 
 
 def resume_mode(args):

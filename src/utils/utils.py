@@ -1,6 +1,7 @@
 import numpy as np
 from munkres import Munkres, print_matrix
 from collections import Counter
+from sklearn.metrics.cluster import homogeneity_score, completeness_score, v_measure_score
 
 
 def compute_cost(zt, zt_real):
@@ -113,5 +114,12 @@ def calculate_variation_of_information(U, V):
     entropy_U = calculate_entropy(U)
     entropy_V = calculate_entropy(V)
     mutual_information = calculate_mutual_information(U, V)
-    return entropy_U + entropy_V - 2 * mutual_information
+    variation_of_information = entropy_U + entropy_V - 2 * mutual_information
+    return variation_of_information, variation_of_information / (entropy_U + entropy_V)
+
+def calculate_v_measure(true_labels, predicted_labels):
+    homo_score = homogeneity_score(true_labels, predicted_labels)
+    comp_score = completeness_score(true_labels, predicted_labels)
+    v_score = v_measure_score(true_labels, predicted_labels)
+    return homo_score, comp_score, v_score
 

@@ -26,9 +26,10 @@ class DirectAssignmentPOS:
 
     def emission_pdf(self):
         # TODO: can have more complex smoothing -- introduce hyperparameter for the smoothing count
+        smoothing = 1
         column_sums = self.emission_count.sum(axis=0)       # axis = 0 -- column sums
-        fun1 = lambda x: (self.emission_count[x] + 1) / (column_sums + self.vocab_size)
-        fun2 = lambda x: 1 / self.vocab_size
+        fun1 = lambda x: (self.emission_count[x] + smoothing) / (column_sums + self.vocab_size * smoothing)
+        fun2 = lambda x: smoothing / self.vocab_size
         return fun1, fun2
 
     def initialise_first_state(self, index):

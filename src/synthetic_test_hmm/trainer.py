@@ -28,7 +28,8 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
                 sampler.sample_hidden_states_on_last_next_state(index, t)
             sampler.sample_hidden_states_on_last_state(index, sampler.seq_length[index] - 1)
 
-        mylogger.info(f"iter {iteration} VI: {calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))}")
+        vi, nvi = calculate_variation_of_information(flatten(sampler.hidden_states), flatten(dataset.real_hidden_states))
+        mylogger.info(f"iter {iteration} VI: {vi}, NVI: {nvi}")
 
         sampler.update_K()
         print("new K: ", sampler.K)
