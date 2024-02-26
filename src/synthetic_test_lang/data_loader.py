@@ -23,6 +23,12 @@ def load_data(dataset_name, noise_level, universal=True):
     loaded_npz = np.load(dataset_path, allow_pickle=True)
     num_observations = int(loaded_npz['num_obs'])
     observations = list(loaded_npz['observation'])
+
+    if dataset_name == 'Childes':
+        universal = True
+    if dataset_name == 'chunking':
+        universal = False
+
     if universal:
         num_states = int(loaded_npz['num_states_universal'])
         real_hidden_states = list(loaded_npz['real_hidden_universal'])
@@ -31,6 +37,7 @@ def load_data(dataset_name, noise_level, universal=True):
         num_states = int(loaded_npz['num_states_specific'])
         real_hidden_states = list(loaded_npz['real_hidden_specific'])
         noisy_hidden_states = list(loaded_npz['noisy_hidden_specific'])
+
 
     size = len(observations)
 

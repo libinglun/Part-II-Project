@@ -139,7 +139,7 @@ def create_lang_dataset_childes(noise_level):
     obs_object = np.array(observations, dtype=object)
     uni_hid_object = np.array(hidden_states_universal, dtype=object)
     noisy_uni_hid_object = np.array(noisy_hidden_states_universal, dtype=object)
-    np.savez(file_path, num_states=len(pos_to_index) + 1, num_obs=len(word_to_index), observation=obs_object,
+    np.savez(file_path, num_states_universal=len(pos_to_index) + 1, num_obs=len(word_to_index), observation=obs_object,
              real_hidden_universal=uni_hid_object, noisy_hidden_universal=noisy_uni_hid_object, noisy_level=noise_level)
 
     mylogger.info(f"Childes dataset with noise {noise_level} is created ...")
