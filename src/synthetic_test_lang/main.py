@@ -28,7 +28,7 @@ def train_mode(args):
     for i in range(dataset.num_states - 1):
         sampler.model.update_beta_with_new_state()
 
-    train_sampler(sampler, args, dataset, sample_hyperparam=True)
+    train_sampler(sampler, args, dataset, sample_hyperparam=False)
 
 
 def resume_mode(args):

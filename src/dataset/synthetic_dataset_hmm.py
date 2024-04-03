@@ -41,8 +41,8 @@ def create_hmm_dataset(noisy_level, num_states, num_obs, size):
             noisy_hidden_states.append(noisy_sequence)
         return noisy_hidden_states
 
-    transition_probs = np.random.dirichlet(np.random.rand(num_states), size=num_states)
-    emission_probs = np.random.dirichlet(np.random.rand(num_obs), size=num_states)
+    transition_probs = np.random.dirichlet(np.ones(num_states), size=num_states)
+    emission_probs = np.random.dirichlet(np.ones(num_obs) * 2, size=num_states)
     initial_state_dist = np.ones(num_states) / num_states
 
     syn_sequences, syn_hidden_states = simulate_hmm(

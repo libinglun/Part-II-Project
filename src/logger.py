@@ -1,7 +1,9 @@
 import logging
 import os
 from datetime import datetime
+# TODO: change this to package when do pos tag
 from .utils.const import PROJ_PATH
+# from utils.const import PROJ_PATH
 
 LOG_FILE_NAME = f"{datetime.now().strftime('%m_%d_%Y_%H_%M_%S')}.log"
 logs_path = os.path.join(PROJ_PATH, 'logs', f"{datetime.now().strftime('%m_%d_%Y')}")

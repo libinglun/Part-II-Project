@@ -7,7 +7,7 @@ from ..logger import mylogger
 
 
 class SynHMMDataset:
-    def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count):
+    def __init__(self, real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count, real_emis_dist):
         self.real_hidden_states = real_hidden_states
         self.noisy_hidden_states = noisy_hidden_states
         self.real_trans_count = real_trans_count
@@ -16,6 +16,7 @@ class SynHMMDataset:
         self.observations = observations
         self.real_emis_count = real_emis_count
         self.noisy_emis_count = noisy_emis_count
+        self.real_emis_dist = real_emis_dist
 
 
 def load_data(noisy_level, num_states, num_observations, size):
@@ -24,7 +25,8 @@ def load_data(noisy_level, num_states, num_observations, size):
     observations = list(loaded_npz['observation'])
     real_hidden_states = list(loaded_npz['real_hidden'])
     noisy_hidden_states = list(loaded_npz['noisy_hidden'])
-    real_trans_dist = np.vstack(loaded_npz['real_trans'])
+    real_trans_dist = np.array(loaded_npz['real_trans'])
+    real_emis_dist = np.array(loaded_npz['emis'])
 
     real_trans_count = np.zeros((num_states, num_states), dtype='int')
     noisy_trans_count = np.zeros((num_states, num_states), dtype='int')
@@ -51,4 +53,4 @@ def load_data(noisy_level, num_states, num_observations, size):
     mylogger.info(f"Initial Euclidean Distance: {euclidean_distance(real_trans_count, noisy_trans_count)}")
     # print(euclidean_distance(real_trans_count, noisy_trans_count))
 
-    return SynHMMDataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count)
+    return SynHMMDataset(real_hidden_states, noisy_hidden_states, real_trans_count, noisy_trans_count, real_trans_dist, observations, real_emis_count, noisy_emis_count, real_emis_dist)

@@ -15,7 +15,7 @@ set_print_options()
 
 
 def train_mode(args):
-    model = HDPHMM()
+    model = HDPHMM(alpha=0.5)
     dataset: SynHMMDataset = load_data(args.noise, args.states, args.obs, args.size)
     sampler = DirectAssignmentPOS(
         model, dataset.observations, args.obs,

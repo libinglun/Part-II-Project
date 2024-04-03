@@ -45,7 +45,6 @@ class DirectAssignment(ABC):
                     continue
                     # self.m_mat[j, k] = 0 # original code, changed to continue since m_mat is initialised to 0
                 else:
-                    # move this to HDP_HMM, so that rho would be hidden from direct assignment model
                     x_vec = np.random.binomial(1, (
                             self.model.alpha * self.model.beta_vec[k] + self.model.rho * (j == k)) / (
                                                        np.arange(self.transition_count[j, k]) + self.model.alpha *

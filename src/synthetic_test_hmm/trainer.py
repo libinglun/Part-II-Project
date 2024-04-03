@@ -61,6 +61,9 @@ def train_sampler(sampler, args, dataset, prev_iters=0):
         mylogger.info(f"KL Divergence between sampled and real transition distribution is {trans_KL_divergence}")
         print(f"Distance between sampled and real transition distribution is {trans_distance}")
         print(f"KL Divergence between sampled and real transition distribution is {trans_KL_divergence}")
+        # emis_dist = sampler.calculate_emission_distribution()
+        # print(emis_dist.shape, dataset.real_emis_dist.shape)
+        # emis_KL_divergence = kl_divergence(emis_dist, dataset.real_emis_dist)
 
         mis_states, total_states = difference(sampler.hidden_states, dataset.real_hidden_states)
         mylogger.info(f"The rate of missing states is:  {round(mis_states / total_states * 100, 3)}%")
