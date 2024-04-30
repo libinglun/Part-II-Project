@@ -23,7 +23,7 @@ pip install -e .
 ```
 ### Running the project 
 
-#### HMM synthetic test 
+#### HMM Synthetic Test 
 To train the model on an HMM synthetic test, use the command (example):
 ```angular2html
 hmm-test -mode train -iter 10 -noise 0.5 -states 10 -obs 500 -size 5000
@@ -38,7 +38,7 @@ hmm-test -mode resume -state "path to the state saved in the result folder" -ite
 Where in the `resume` mode, the model will load the saved state of previous training and resume training on the dataset. 
 > Note that the state would be stored in an `npz` file in the result folder. DON'T include the .npz suffix in the path.
 
-#### Natural Language synthetic test
+#### Natural Language Test
 To train the model on a natural language dataset, use the command:
 ```angular2html
 lang-test -mode train -iter 10 -noise 0.5 -name PTB  
