@@ -3,6 +3,7 @@
 zhou_model/
 projenv/
 CRF++-0.58/
+graph/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

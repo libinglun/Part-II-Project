@@ -132,7 +132,8 @@ class DirectAssignmentGaussian(DirectAssignment):
             # Extend the transition matrix with the new state
             # a new column of zero is being added to the right side of n_mat
             self.transition_count = np.hstack((self.transition_count, np.zeros((self.K, 1))))
-            # a new row of zero is being added to the bottom of n_mat
+            # a new row of zero is being added to the
+            # bottom of n_mat
             self.transition_count = np.vstack((self.transition_count, np.zeros((1, self.K + 1))))
             # both ysum and ycnt is a 1D array, just append 0 at the end of array
             self.observed_data = np.hstack((self.observed_data, 0))
