@@ -43,7 +43,7 @@ To train the model on a natural language dataset, use the command:
 ```angular2html
 lang-test -mode train -iter 10 -noise 0.5 -name PTB  
 ```
-Where `-mode` and `-iter` are similar arguments as in the HMM test. `-noise` specifies the noise-level of the synthetic dataset created, 
+Where `-mode` and `-iter` are similar arguments as in the HMM test. `-noise` (optional) specifies the noise-level of the dataset, 
 and `-name` specifies the name of the dataset to be trained on. 
 
 > Currently only supports Penn-treebank as `PTB` and Childes as `Childes`
